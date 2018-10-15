@@ -1,0 +1,38 @@
+# FA Notify configuration file
+
+# Set TG client to debug mode, and also run a pprof debug server on
+# http://localhost:6680/debug/pprof/
+debug = true
+logLevel = "DEBUG"
+
+[tg]
+# Get this token from @BotFather when you create your bot.
+token = ""
+# User ID of the owner (*not* the username). They will receive a message for
+# every "error" level log message.
+# You can use @userinfobot to get your user ID.
+ownerID = ""
+
+[fa]
+# Proxy server to use for FA requests. You can do something like
+# ssh -D 18080 my-awesome-server.com
+# to run a SOCKS5 proxy over an ssh connection, and then specify something like
+# socks5://127.0.0.1:18080
+# for this to use that proxy.
+proxy = ""
+# You probably want to set this to what your browser says it is.
+userAgent = "fanotify/faapi/go"
+# Requests to FA will not occur more frequently than this. You can use common
+# suffixes; see https://golang.org/pkg/time/#ParseDuration
+rateLimit = "10s"
+
+# Cookies to set on requests to FA. If you don't provide valid cookies that will
+# get you logged in to an account, only general-rated artwork will be returned.
+[[fa.cookies]]
+name = "a"
+value = "A"
+
+[[fa.cookies]]
+name = "b"
+value = "B"
+
