@@ -1,2 +1,4 @@
 fanotify.toml
 .idea/
+fanotify.bolt*
+fanotify.exe

@@ -26,84 +26,72 @@
  *
  */
 
-package main
+package db
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
 	"time"
 
-	"github.com/ajanata/faapi"
-	"github.com/koding/multiconfig"
+	"github.com/etcd-io/bbolt"
 )
 
 type (
-	// Config is the configuration for the bot.
-	Config struct {
-		Debug    bool   `default:"false"`
-		LogLevel string `default:"INFO"`
-		DB       DB
-		FA       FA
-		TG       TG
-	}
-
-	// DB is the database configuration.
-	DB struct {
-		File string `default:"fanotify.bolt"`
-	}
-
-	// TG is the configuration for Telegram.
-	TG struct {
-		Token   string `required:"true"`
-		OwnerID string `required:"true"`
-	}
-
-	// FA is the configuration for FurAffinity.
-	FA struct {
-		Cookies   []Cookie
-		Proxy     string
-		RateLimit duration `default:"10s"`
-		UserAgent string   `required:"true"`
-	}
-
-	// Cookie is an HTTP cookie.
-	Cookie struct {
-		Name  string
-		Value string
-	}
-
-	duration struct {
-		time.Duration
+	// User represents a telegram user in the database.
+	User struct {
+		Name          string     `json:"name"`
+		Started       bool       `json:"started"`
+		ID            TelegramID `json:"id"`
+		LastMessage   time.Time  `json:"last_message"`
+		AlertKeywords []string   `json:"alert_keywords"`
 	}
 )
 
-func loadConfig() *Config {
-	m := multiconfig.NewWithPath("fanotify.toml")
-	c := new(Config)
-	m.MustLoad(c)
-	return c
+func idKey(id TelegramID) []byte {
+	return []byte(strconv.FormatInt(int64(id), 10))
 }
 
-func (d *duration) UnmarshalText(text []byte) (err error) {
-	d.Duration, err = time.ParseDuration(string(text))
-	return err
-}
-
-func (c *FA) faAPIConfig() faapi.Config {
-	cookies := make([]faapi.Cookie, len(c.Cookies))
-	for i, c := range cookies {
-		cookies[i] = faapi.Cookie{
-			Name:  c.Name,
-			Value: c.Value,
+// GetUser loads the user with the given ID, if the user exists. If the user
+// does not exist, nil is returned.
+func (d *db) GetUser(id TelegramID) (*User, error) {
+	var user *User
+	err := d.b.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(usersBucket)
+		if b == nil {
+			return errors.New("could not load users bucket")
 		}
-	}
-	// this is so dumb
-	rl, err := time.ParseDuration(c.RateLimit.String())
-	if err != nil {
-		panic(err)
-	}
-	return faapi.Config{
-		Cookies:   cookies,
-		Proxy:     c.Proxy,
-		RateLimit: rl,
-		UserAgent: c.UserAgent,
-	}
+
+		data := b.Get(idKey(id))
+		if data == nil {
+			return nil
+		}
+		user = &User{}
+
+		err := json.Unmarshal(data, user)
+		if err != nil {
+			return fmt.Errorf("unmarshalling user: %s", err)
+		}
+
+		return nil
+	})
+	return user, err
+}
+
+// SaveUser saves the given user in the database, overwriting any old information about the user.
+func (d *db) SaveUser(user *User) error {
+	return d.b.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(usersBucket)
+		if b == nil {
+			return errors.New("could not load users bucket")
+		}
+
+		data, err := json.Marshal(user)
+		if err != nil {
+			return fmt.Errorf("marshalling user: %s", err)
+		}
+
+		return b.Put(idKey(user.ID), data)
+	})
 }

@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/ajanata/faapi"
+	"github.com/ajanata/fanotify/db"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/rossmcdonald/telegram_hook"
 	log "github.com/sirupsen/logrus"
@@ -41,9 +42,10 @@ import (
 
 type (
 	bot struct {
-		config *Config
-		fa     *faapi.Client
-		tg     *tgbotapi.BotAPI
+		c  *Config
+		db db.DB
+		fa *faapi.Client
+		tg *tgbotapi.BotAPI
 	}
 )
 
@@ -57,7 +59,7 @@ func main() {
 	hook, err := telegram_hook.NewTelegramHook("FANotifierBot", c.TG.Token, c.TG.OwnerID,
 		telegram_hook.WithAsync(true), telegram_hook.WithTimeout(15*time.Second))
 	if err != nil {
-		log.WithError(err).Warn("Unable to create telegram log hook; logs will only be here")
+		log.WithError(err).Fatal("Unable to create telegram log hook.")
 	}
 	log.AddHook(hook)
 	log.Error("FurAffinity notifier bot starting, phase 2")
@@ -68,29 +70,53 @@ func main() {
 		}()
 	}
 
-	fa, err := faapi.New(c.FA.faAPIConfig())
+	d, err := db.New(c.DB.File)
+	defer d.Close()
 	if err != nil {
-		log.WithError(err).Error("Unable to create faapi client!")
-		panic(err)
+		log.WithError(err).Fatal("Unable to open database.")
 	}
+
+	fa, err := faapi.New(c.FA.faAPIConfig())
 	defer fa.Close()
+	if err != nil {
+		log.WithError(err).Fatal("Unable to create faapi client!")
+	}
 
 	tg, err := tgbotapi.NewBotAPI(c.TG.Token)
 	if err != nil {
-		log.WithError(err).Error("Unable to create telegram client!")
-		panic(err)
+		log.WithError(err).Fatal("Unable to create telegram client!")
 	}
 	tg.Debug = c.Debug
 	err = tgbotapi.SetLogger(tglogger{})
 	if err != nil {
-		log.WithError(err).Error("Unable to set telegram client logger")
+		log.WithError(err).Fatal("Unable to set telegram client logger")
 	}
 	log.WithField("username", tg.Self.UserName).Info("Logged in to telegram.")
 
+	oldUser, err := d.GetUser(1234)
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't load old user")
+	}
+	if oldUser != nil {
+		log.Infof("Old user: %+v", oldUser)
+	}
+
+	user := &db.User{
+		ID:            1234,
+		Name:          "test",
+		LastMessage:   time.Now(),
+		AlertKeywords: []string{"asdf", "qwer"},
+	}
+	err = d.SaveUser(user)
+	if err != nil {
+		log.WithError(err).Fatal("Couldn't save user")
+	}
+
 	bot := bot{
-		config: c,
-		fa:     fa,
-		tg:     tg,
+		c:  c,
+		db: d,
+		fa: fa,
+		tg: tg,
 	}
 	bot.runLoop()
 }

@@ -26,84 +26,80 @@
  *
  */
 
-package main
+package db
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/ajanata/faapi"
-	"github.com/koding/multiconfig"
+	"github.com/etcd-io/bbolt"
+)
+
+var (
+	versionKey = []byte("version")
+	version1   = []byte("1")
+
+	metadataBucket = []byte("metadata")
+	usersBucket    = []byte("users")
 )
 
 type (
-	// Config is the configuration for the bot.
-	Config struct {
-		Debug    bool   `default:"false"`
-		LogLevel string `default:"INFO"`
-		DB       DB
-		FA       FA
-		TG       TG
+	// TelegramID is the type of Telegram entity IDs.
+	TelegramID int64
+
+	// DB is an interface that can load and store information in a database.
+	DB interface {
+		Close() error
+		GetUser(id TelegramID) (*User, error)
+		SaveUser(user *User) error
 	}
 
-	// DB is the database configuration.
-	DB struct {
-		File string `default:"fanotify.bolt"`
-	}
-
-	// TG is the configuration for Telegram.
-	TG struct {
-		Token   string `required:"true"`
-		OwnerID string `required:"true"`
-	}
-
-	// FA is the configuration for FurAffinity.
-	FA struct {
-		Cookies   []Cookie
-		Proxy     string
-		RateLimit duration `default:"10s"`
-		UserAgent string   `required:"true"`
-	}
-
-	// Cookie is an HTTP cookie.
-	Cookie struct {
-		Name  string
-		Value string
-	}
-
-	duration struct {
-		time.Duration
+	db struct {
+		b *bolt.DB
 	}
 )
 
-func loadConfig() *Config {
-	m := multiconfig.NewWithPath("fanotify.toml")
-	c := new(Config)
-	m.MustLoad(c)
-	return c
-}
-
-func (d *duration) UnmarshalText(text []byte) (err error) {
-	d.Duration, err = time.ParseDuration(string(text))
-	return err
-}
-
-func (c *FA) faAPIConfig() faapi.Config {
-	cookies := make([]faapi.Cookie, len(c.Cookies))
-	for i, c := range cookies {
-		cookies[i] = faapi.Cookie{
-			Name:  c.Name,
-			Value: c.Value,
-		}
-	}
-	// this is so dumb
-	rl, err := time.ParseDuration(c.RateLimit.String())
+// New creates a new database connection.
+func New(filename string) (DB, error) {
+	b, err := bolt.Open(filename, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return faapi.Config{
-		Cookies:   cookies,
-		Proxy:     c.Proxy,
-		RateLimit: rl,
-		UserAgent: c.UserAgent,
+
+	err = b.Update(func(tx *bolt.Tx) error {
+		m, err := tx.CreateBucketIfNotExists(metadataBucket)
+		if err != nil {
+			return fmt.Errorf("create metadata bucket: %s", err)
+		}
+		v := m.Get(versionKey)
+		if v == nil {
+			if err := m.Put(versionKey, version1); err != nil {
+				return fmt.Errorf("save version: %s", err)
+			}
+		} else if len(v) != len(version1) || v[0] != version1[0] {
+			// TODO better check once there are more version
+			return fmt.Errorf("bad db version: %s", v)
+		}
+
+		_, err = tx.CreateBucketIfNotExists(usersBucket)
+		if err != nil {
+			return fmt.Errorf("create users bucket: %s", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
+
+	return &db{
+		b: b,
+	}, nil
+}
+
+func (d *db) Close() error {
+	if d == nil {
+		return nil
+	}
+	return d.b.Close()
 }
