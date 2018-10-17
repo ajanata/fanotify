@@ -30,6 +30,7 @@ package db
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/etcd-io/bbolt"
@@ -98,8 +99,9 @@ func New(filename string) (DB, error) {
 }
 
 func (d *db) Close() error {
-	if d == nil {
-		return nil
-	}
 	return d.b.Close()
+}
+
+func (id TelegramID) Key() []byte {
+	return []byte(strconv.FormatInt(int64(id), 10))
 }

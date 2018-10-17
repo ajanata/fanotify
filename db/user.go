@@ -32,7 +32,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/etcd-io/bbolt"
@@ -49,10 +48,6 @@ type (
 	}
 )
 
-func idKey(id TelegramID) []byte {
-	return []byte(strconv.FormatInt(int64(id), 10))
-}
-
 // GetUser loads the user with the given ID, if the user exists. If the user
 // does not exist, nil is returned.
 func (d *db) GetUser(id TelegramID) (*User, error) {
@@ -63,7 +58,7 @@ func (d *db) GetUser(id TelegramID) (*User, error) {
 			return errors.New("could not load users bucket")
 		}
 
-		data := b.Get(idKey(id))
+		data := b.Get(id.Key())
 		if data == nil {
 			return nil
 		}
@@ -92,6 +87,6 @@ func (d *db) SaveUser(user *User) error {
 			return fmt.Errorf("marshalling user: %s", err)
 		}
 
-		return b.Put(idKey(user.ID), data)
+		return b.Put(user.ID.Key(), data)
 	})
 }

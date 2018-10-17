@@ -71,16 +71,16 @@ func main() {
 	}
 
 	d, err := db.New(c.DB.File)
-	defer d.Close()
 	if err != nil {
 		log.WithError(err).Fatal("Unable to open database.")
 	}
+	defer d.Close()
 
 	fa, err := faapi.New(c.FA.faAPIConfig())
-	defer fa.Close()
 	if err != nil {
 		log.WithError(err).Fatal("Unable to create faapi client!")
 	}
+	defer fa.Close()
 
 	tg, err := tgbotapi.NewBotAPI(c.TG.Token)
 	if err != nil {
