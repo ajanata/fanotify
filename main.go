@@ -111,7 +111,7 @@ func main() {
 
 	username, err := fa.GetUsername()
 	if err != nil {
-		log.Error("Not logged in to FurAffinity!")
+		log.WithError(err).Error("Not logged in to FurAffinity!")
 	} else {
 		log.WithField("username", username).Info("Logged in to FurAffinity.")
 	}

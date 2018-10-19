@@ -91,10 +91,10 @@ func (d *duration) UnmarshalText(text []byte) (err error) {
 
 func (c *FA) faAPIConfig() faapi.Config {
 	cookies := make([]faapi.Cookie, len(c.Cookies))
-	for i, c := range cookies {
+	for i, cookie := range c.Cookies {
 		cookies[i] = faapi.Cookie{
-			Name:  c.Name,
-			Value: c.Value,
+			Name:  cookie.Name,
+			Value: cookie.Value,
 		}
 	}
 	// this is so dumb
