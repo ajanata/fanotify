@@ -4,6 +4,10 @@
 # http://localhost:6680/debug/pprof/
 debug = true
 logLevel = "DEBUG"
+# For colors in log output, useful in IDEs that properly interpret them but don't show up as TTYs
+logForceColors = true
+# Output logs in JSON format instead. Overrides logForceColors.
+logJSON = false
 
 [tg]
 # Get this token from @BotFather when you create your bot.

@@ -50,38 +50,73 @@ type (
 )
 
 func main() {
-	log.SetLevel(log.DebugLevel)
-	log.Info("FurAffinity notifier bot starting, phase 1")
+	defer func() {
+		if err := recover(); err != nil {
+			log.WithField("error", err).Panic("Caught panic")
+		}
+	}()
 
+	// Load up the config
 	c := loadConfig()
-	log.WithField("config", c).Debug("Loaded config")
 
+	// Configure logging
+	level, err := log.ParseLevel(c.LogLevel)
+	if err != nil {
+		log.WithField("level", c.LogLevel).Warn("Unable to parse log level, using INFO")
+		level = log.InfoLevel
+	}
+	log.SetLevel(level)
+
+	if c.LogForceColors {
+		log.SetFormatter(&log.TextFormatter{ForceColors: true})
+	}
+	if c.LogJSON {
+		log.SetFormatter(&log.JSONFormatter{})
+	}
+
+	// Add Telegram log hook
 	hook, err := telegram_hook.NewTelegramHook("FANotifierBot", c.TG.Token, c.TG.OwnerID,
-		telegram_hook.WithAsync(true), telegram_hook.WithTimeout(15*time.Second))
+		telegram_hook.WithTimeout(15*time.Second))
 	if err != nil {
 		log.WithError(err).Fatal("Unable to create telegram log hook.")
 	}
 	log.AddHook(hook)
-	log.Error("FurAffinity notifier bot starting, phase 2")
 
+	// And now that we've got logging completely set up, we can start logging what we're doing.
+	log.WithField("config", c).Debug("Loaded config")
+
+	// TODO allow us to send stuff to TG logging without it having to be an error.
+	log.Error("FurAffinity notifier bot starting")
+
+	// Turn on pprof debugging if requested
 	if c.Debug {
 		go func() {
 			log.Info(http.ListenAndServe("localhost:6680", nil))
 		}()
 	}
 
+	// Load our database.
 	d, err := db.New(c.DB.File)
 	if err != nil {
 		log.WithError(err).Fatal("Unable to open database.")
 	}
 	defer d.Close()
 
+	// Create FurAffinity API client.
 	fa, err := faapi.New(c.FA.faAPIConfig())
 	if err != nil {
 		log.WithError(err).Fatal("Unable to create faapi client!")
 	}
 	defer fa.Close()
 
+	username, err := fa.GetUsername()
+	if err != nil {
+		log.Error("Not logged in to FurAffinity!")
+	} else {
+		log.WithField("username", username).Info("Logged in to FurAffinity.")
+	}
+
+	// Make the Telegram bot API.
 	tg, err := tgbotapi.NewBotAPI(c.TG.Token)
 	if err != nil {
 		log.WithError(err).Fatal("Unable to create telegram client!")
@@ -93,6 +128,7 @@ func main() {
 	}
 	log.WithField("username", tg.Self.UserName).Info("Logged in to telegram.")
 
+	// Do some testing on the database.
 	oldUser, err := d.GetUser(1234)
 	if err != nil {
 		log.WithError(err).Fatal("Couldn't load old user")
@@ -112,6 +148,7 @@ func main() {
 		log.WithError(err).Fatal("Couldn't save user")
 	}
 
+	// Finally, make the bot and run it.
 	bot := bot{
 		c:  c,
 		db: d,

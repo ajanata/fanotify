@@ -38,11 +38,13 @@ import (
 type (
 	// Config is the configuration for the bot.
 	Config struct {
-		Debug    bool   `default:"false"`
-		LogLevel string `default:"INFO"`
-		DB       DB
-		FA       FA
-		TG       TG
+		Debug          bool   `default:"false"`
+		LogLevel       string `default:"INFO"`
+		LogForceColors bool   `default:"false"`
+		LogJSON        bool   `default:"false"`
+		DB             DB
+		FA             FA
+		TG             TG
 	}
 
 	// DB is the database configuration.
