@@ -31,12 +31,13 @@ package main
 import (
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 	"time"
 
 	"github.com/ajanata/faapi"
 	"github.com/ajanata/fanotify/db"
+	"github.com/ajanata/telegram_hook"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/rossmcdonald/telegram_hook"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -75,18 +76,25 @@ func main() {
 	}
 
 	// Add Telegram log hook
-	hook, err := telegram_hook.NewTelegramHook("FANotifierBot", c.TG.Token, c.TG.OwnerID,
+	hook, err := telegram_hook.NewTelegramHook("FANotifierBot", c.TG.Token, strconv.FormatInt(c.TG.OwnerID, 10),
 		telegram_hook.WithTimeout(15*time.Second))
 	if err != nil {
 		log.WithError(err).Fatal("Unable to create telegram log hook.")
 	}
+	hook.Level = log.InfoLevel
 	log.AddHook(hook)
 
 	// And now that we've got logging completely set up, we can start logging what we're doing.
+	log.Info("FurAffinity Notifier bot starting")
 	log.WithField("config", c).Debug("Loaded config")
 
-	// TODO allow us to send stuff to TG logging without it having to be an error.
-	log.Error("FurAffinity notifier bot starting")
+	// Reconfigure logging to Telegram to requested log level
+	level, err = log.ParseLevel(c.TG.LogLevel)
+	if err != nil {
+		log.WithField("level", c.TG.LogLevel).Warn("Unable to parse Telegram log level, using WARN")
+		level = log.WarnLevel
+	}
+	hook.Level = level
 
 	// Turn on pprof debugging if requested
 	if c.Debug {

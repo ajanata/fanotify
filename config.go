@@ -54,8 +54,9 @@ type (
 
 	// TG is the configuration for Telegram.
 	TG struct {
-		Token   string `required:"true"`
-		OwnerID string `required:"true"`
+		LogLevel string `default:"WARN"`
+		Token    string `required:"true"`
+		OwnerID  int64  `required:"true"`
 	}
 
 	// FA is the configuration for FurAffinity.
