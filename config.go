@@ -54,6 +54,7 @@ type (
 
 	// TG is the configuration for Telegram.
 	TG struct {
+		Debug    bool   `default:"false"`
 		LogLevel string `default:"WARN"`
 		Token    string `required:"true"`
 		OwnerID  int64  `required:"true"`

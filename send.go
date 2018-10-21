@@ -26,68 +26,56 @@
  *
  */
 
-package db
+package main
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"time"
-
-	"github.com/etcd-io/bbolt"
+	"github.com/ajanata/fanotify/db"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
+	log "github.com/sirupsen/logrus"
 )
 
-type (
-	// User represents a telegram user in the database.
-	User struct {
-		Username      string     `json:"username"`
-		Started       bool       `json:"started"`
-		ID            TelegramID `json:"id"`
-		LastUpdated   time.Time  `json:"last_updated"`
-		AlertKeywords []string   `json:"alert_keywords"`
-	}
-)
-
-// GetUser loads the user with the given ID, if the user exists. If the user
-// does not exist, nil is returned.
-func (d *db) GetUser(id TelegramID) (*User, error) {
-	var user *User
-	err := d.b.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(usersBucket)
-		if b == nil {
-			return errors.New("could not load users bucket")
-		}
-
-		data := b.Get(id.Key())
-		if data == nil {
-			return nil
-		}
-		user = &User{}
-
-		err := json.Unmarshal(data, user)
-		if err != nil {
-			return fmt.Errorf("unmarshalling user: %s", err)
-		}
-
-		return nil
+// sendMessage checks that the user has started (and hasn't stopped) the bot before sending a message to them.
+func (b *bot) sendMessage(userID int, msg string) {
+	logger := log.WithFields(log.Fields{
+		"func":   "sendMessage",
+		"userID": userID,
 	})
-	return user, err
+
+	user, err := b.db.GetUser(db.TelegramID(userID))
+	if err != nil {
+		logger.WithError(err).Error("Unable to load user")
+		return
+	}
+
+	if user == nil {
+		// user doesn't exist, they can't have started the bot. though we should never try to send something to a user
+		// who has never talked to us in the first place
+		logger.Warn("User has never started bot")
+		return
+	}
+
+	if !user.Started {
+		return
+	}
+
+	m := tgbotapi.NewMessage(int64(userID), msg)
+	_, err = b.tg.Send(m)
+	if err != nil {
+		logger.WithError(err).Error("Unable to send message")
+	}
 }
 
-// SaveUser saves the given user in the database, overwriting any old information about the user.
-func (d *db) SaveUser(user *User) error {
-	return d.b.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(usersBucket)
-		if b == nil {
-			return errors.New("could not load users bucket")
-		}
-
-		user.LastUpdated = time.Now()
-		data, err := json.Marshal(user)
-		if err != nil {
-			return fmt.Errorf("marshalling user: %s", err)
-		}
-
-		return b.Put(user.ID.Key(), data)
+// alwaysSendMessage always sends a message to the user, even if they haven't started the bot.
+// This should only be used when we fail to save that they have started the bot.
+func (b *bot) alwaysSendMessage(userID int, msg string) {
+	logger := log.WithFields(log.Fields{
+		"func":   "alwaysSendMessage",
+		"userID": userID,
 	})
+
+	m := tgbotapi.NewMessage(int64(userID), msg)
+	_, err := b.tg.Send(m)
+	if err != nil {
+		logger.WithError(err).Error("Unable to send message")
+	}
 }

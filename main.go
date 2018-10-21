@@ -129,7 +129,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("Unable to create telegram client!")
 	}
-	tg.Debug = c.Debug
+	tg.Debug = c.TG.Debug
 	err = tgbotapi.SetLogger(tglogger{})
 	if err != nil {
 		log.WithError(err).Fatal("Unable to set telegram client logger")
@@ -147,8 +147,7 @@ func main() {
 
 	user := &db.User{
 		ID:            1234,
-		Name:          "test",
-		LastMessage:   time.Now(),
+		Username:      "test",
 		AlertKeywords: []string{"asdf", "qwer"},
 	}
 	err = d.SaveUser(user)
@@ -167,13 +166,14 @@ func main() {
 }
 
 func (b *bot) runLoop() {
+	logger := log.WithField("func", "runLoop")
+
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	updates, err := b.tg.GetUpdatesChan(u)
 	if err != nil {
-		log.WithError(err).Error("Unable to subscribe to updates")
-		panic(err)
+		logger.WithError(err).Panic("Unable to subscribe to updates")
 	}
 
 	for update := range updates {
@@ -181,10 +181,14 @@ func (b *bot) runLoop() {
 			continue
 		}
 
-		log.WithFields(log.Fields{
+		logger.WithFields(log.Fields{
 			"from":       update.Message.From.UserName,
 			"text":       update.Message.Text,
 			"is_command": update.Message.IsCommand(),
 		}).Debug("incoming message")
+
+		if update.Message.IsCommand() {
+			b.dispatchCommand(update.Message)
+		}
 	}
 }

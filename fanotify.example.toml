@@ -16,6 +16,7 @@ token = ""
 # every "error" level log message.
 # You can use @userinfobot to get your user ID.
 ownerID = 0
+debug = false
 
 [fa]
 # Proxy server to use for FA requests. You can do something like
