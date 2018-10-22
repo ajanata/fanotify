@@ -40,11 +40,11 @@ import (
 type (
 	// User represents a telegram user in the database.
 	User struct {
-		Username      string     `json:"username"`
-		Started       bool       `json:"started"`
-		ID            TelegramID `json:"id"`
-		LastUpdated   time.Time  `json:"last_updated"`
-		AlertKeywords []string   `json:"alert_keywords"`
+		Username    string          `json:"username"`
+		ID          TelegramID      `json:"id"`
+		Started     bool            `json:"started"`
+		LastUpdated time.Time       `json:"last_updated"`
+		Searches    map[string]bool `json:"searches"`
 	}
 )
 
@@ -53,41 +53,53 @@ type (
 func (d *db) GetUser(id TelegramID) (*User, error) {
 	var user *User
 	err := d.b.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(usersBucket)
-		if b == nil {
-			return errors.New("could not load users bucket")
-		}
-
-		data := b.Get(id.Key())
-		if data == nil {
-			return nil
-		}
-		user = &User{}
-
-		err := json.Unmarshal(data, user)
-		if err != nil {
-			return fmt.Errorf("unmarshalling user: %s", err)
-		}
-
-		return nil
+		var err error
+		user, err = getUser(id, tx)
+		return err
 	})
 	return user, err
+}
+
+func getUser(id TelegramID, tx *bolt.Tx) (*User, error) {
+	b := tx.Bucket(usersBucket)
+	if b == nil {
+		return nil, errors.New("could not load users bucket")
+	}
+
+	data := b.Get(id.Key())
+	if data == nil {
+		return nil, nil
+	}
+
+	user := &User{}
+	err := json.Unmarshal(data, user)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshalling user: %s", err)
+	}
+
+	return user, nil
 }
 
 // SaveUser saves the given user in the database, overwriting any old information about the user.
 func (d *db) SaveUser(user *User) error {
 	return d.b.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(usersBucket)
-		if b == nil {
-			return errors.New("could not load users bucket")
-		}
-
-		user.LastUpdated = time.Now()
-		data, err := json.Marshal(user)
-		if err != nil {
-			return fmt.Errorf("marshalling user: %s", err)
-		}
-
-		return b.Put(user.ID.Key(), data)
+		return saveUser(user, tx)
 	})
+}
+
+// saveUser is a helper func to actually save the user to the DB, which may be called inside other
+// db transactions.
+func saveUser(user *User, tx *bolt.Tx) error {
+	b := tx.Bucket(usersBucket)
+	if b == nil {
+		return errors.New("could not load users bucket")
+	}
+
+	user.LastUpdated = time.Now()
+	data, err := json.Marshal(user)
+	if err != nil {
+		return fmt.Errorf("marshalling user: %s", err)
+	}
+
+	return b.Put(user.ID.Key(), data)
 }

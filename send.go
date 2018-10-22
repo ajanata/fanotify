@@ -29,37 +29,56 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/ajanata/fanotify/db"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	log "github.com/sirupsen/logrus"
 )
 
-// sendMessage checks that the user has started (and hasn't stopped) the bot before sending a message to them.
-func (b *bot) sendMessage(userID int, msg string) {
+// userStartedBot checks that the user has started (and hasn't stopped) the bot.
+func (b *bot) userStartedBot(userID int) bool {
 	logger := log.WithFields(log.Fields{
-		"func":   "sendMessage",
+		"func":   "userStartedBot",
 		"userID": userID,
 	})
 
 	user, err := b.db.GetUser(db.TelegramID(userID))
 	if err != nil {
 		logger.WithError(err).Error("Unable to load user")
-		return
+		return false
 	}
 
 	if user == nil {
-		// user doesn't exist, they can't have started the bot. though we should never try to send something to a user
-		// who has never talked to us in the first place
-		logger.Warn("User has never started bot")
+		return false
+	}
+
+	return user.Started
+}
+
+// sendMessage checks that the user has started (and hasn't stopped) the bot before sending a message to them.
+func (b *bot) sendMessage(userID int, msg string, params ...interface{}) {
+	m := tgbotapi.NewMessage(int64(userID), fmt.Sprintf(msg, params...))
+	b.send(userID, m)
+}
+
+func (b *bot) sendHTMLMessage(userID int, msg string, params ...interface{}) {
+	m := tgbotapi.NewMessage(int64(userID), fmt.Sprintf(msg, params...))
+	m.ParseMode = "HTML"
+	b.send(userID, m)
+}
+
+func (b *bot) send(userID int, m tgbotapi.Chattable) {
+	logger := log.WithFields(log.Fields{
+		"func":   "sendMessageImpl",
+		"userID": userID,
+	})
+
+	if !b.userStartedBot(userID) {
 		return
 	}
 
-	if !user.Started {
-		return
-	}
-
-	m := tgbotapi.NewMessage(int64(userID), msg)
-	_, err = b.tg.Send(m)
+	_, err := b.tg.Send(m)
 	if err != nil {
 		logger.WithError(err).Error("Unable to send message")
 	}

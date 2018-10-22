@@ -35,9 +35,22 @@ import (
 )
 
 const (
+	saveFailedFormat = "Sorry, I was unable to save that %s. The botmaster has been notified. Please try again later."
+	loadFailedFormat = "Sorry, I was unable to load %s. The botmaster has been notified. Please try again later."
+
 	startedMsg = `Welcome to the FurAffinity Notifier bot.
 
 Please consult the /help for a list of commands.`
+
+	helpMsg = `FurAffinity Notifier bot will perform searches or monitor user submissions and journals and alert you when there are new items.
+In most circumstances, you should only be notified once about a particular submission. If the bot is restarted, you <i>may</i> get a duplicate notification, if it matches more than one trigger.
+
+This bot is still in development. Not all features are complete, and it may not have great uptime.
+
+<b>Searches are not yet actually performed.</b>
+/addsearch: Add a search.
+/delsearch: Delete a search.
+/listsearch: List saved searches.`
 )
 
 func (b *bot) dispatchCommand(cmd *tgbotapi.Message) {
@@ -49,11 +62,35 @@ func (b *bot) dispatchCommand(cmd *tgbotapi.Message) {
 	logger.Debug("Received command")
 
 	switch cmd.Command() {
+	case "addsearch":
+		b.addSearch(cmd.From)
+	case "cancel":
+		b.cancel(cmd.From)
+	case "delsearch":
+		b.delSearch(cmd.From)
+	case "help":
+		b.help(cmd.From)
+	case "listsearch":
+		b.listSearch(cmd.From)
 	case "start":
 		b.start(cmd.From)
 	case "stop":
 		b.stop(cmd.From)
 	}
+}
+
+func (b *bot) cancel(u *tgbotapi.User) {
+	_, existed := b.plaintextHandler[u.ID]
+	delete(b.plaintextHandler, u.ID)
+	if existed {
+		b.sendMessage(u.ID, "Canceled.")
+	} else {
+		b.sendMessage(u.ID, "Nothing to cancel.")
+	}
+}
+
+func (b *bot) help(u *tgbotapi.User) {
+	b.sendHTMLMessage(u.ID, helpMsg)
 }
 
 func (b *bot) start(u *tgbotapi.User) {

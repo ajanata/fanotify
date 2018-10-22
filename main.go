@@ -41,15 +41,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type (
-	bot struct {
-		c  *Config
-		db db.DB
-		fa *faapi.Client
-		tg *tgbotapi.BotAPI
-	}
-)
-
 func main() {
 	defer func() {
 		if err := recover(); err != nil {
@@ -136,31 +127,13 @@ func main() {
 	}
 	log.WithField("username", tg.Self.UserName).Info("Logged in to telegram.")
 
-	// Do some testing on the database.
-	oldUser, err := d.GetUser(1234)
-	if err != nil {
-		log.WithError(err).Fatal("Couldn't load old user")
-	}
-	if oldUser != nil {
-		log.Infof("Old user: %+v", oldUser)
-	}
-
-	user := &db.User{
-		ID:            1234,
-		Username:      "test",
-		AlertKeywords: []string{"asdf", "qwer"},
-	}
-	err = d.SaveUser(user)
-	if err != nil {
-		log.WithError(err).Fatal("Couldn't save user")
-	}
-
 	// Finally, make the bot and run it.
 	bot := bot{
-		c:  c,
-		db: d,
-		fa: fa,
-		tg: tg,
+		c:                c,
+		db:               d,
+		fa:               fa,
+		tg:               tg,
+		plaintextHandler: make(map[int]ptHandler),
 	}
 	bot.runLoop()
 }
@@ -189,6 +162,9 @@ func (b *bot) runLoop() {
 
 		if update.Message.IsCommand() {
 			b.dispatchCommand(update.Message)
+		} else if handler, exists := b.plaintextHandler[update.Message.From.ID]; exists {
+			handler(update.Message)
+			delete(b.plaintextHandler, update.Message.From.ID)
 		}
 	}
 }

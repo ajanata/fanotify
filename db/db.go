@@ -41,7 +41,8 @@ var (
 	version1   = []byte("1")
 
 	metadataBucket = []byte("metadata")
-	usersBucket    = []byte("users")
+	searchesBucket = []byte("searches")
+	usersBucket    = []byte("tg_users")
 )
 
 type (
@@ -51,6 +52,9 @@ type (
 	// DB is an interface that can load and store information in a database.
 	DB interface {
 		Close() error
+
+		AddSearchForUser(userID TelegramID, search string) error
+		DelSearchForUser(userID TelegramID, search string) error
 		GetUser(id TelegramID) (*User, error)
 		SaveUser(user *User) error
 	}
@@ -80,6 +84,11 @@ func New(filename string) (DB, error) {
 		} else if len(v) != len(version1) || v[0] != version1[0] {
 			// TODO better check once there are more version
 			return fmt.Errorf("bad db version: %s", v)
+		}
+
+		_, err = tx.CreateBucketIfNotExists(searchesBucket)
+		if err != nil {
+			return fmt.Errorf("create searches bucket: %s", err)
 		}
 
 		_, err = tx.CreateBucketIfNotExists(usersBucket)
