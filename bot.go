@@ -121,7 +121,17 @@ func (b *bot) poller() {
 			log.Info("stopping poller")
 			return
 		case <-b.pollTimer.C:
-			log.Infof("tick %s", time.Now())
+			b.doSearches()
 		}
 	}
+}
+
+func (b *bot) doSearches() {
+	logger := log.WithField("func", "doSearches")
+	logger.Debug("Running searches")
+
+	b.db.IterateSearches(func(search *db.Search, ul db.UserLoader) error {
+		logger.WithField("search", search).Debug("Iterating search")
+		return nil
+	})
 }

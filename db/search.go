@@ -39,6 +39,8 @@ import (
 
 type (
 	Search struct {
+		// Set during iteration to allow the search to be saved.
+		tx      *bolt.Tx
 		Search  string              `json:"search"`
 		LastRun time.Time           `json:"last_run"`
 		LastID  string              `json:"last_id"`
@@ -47,8 +49,9 @@ type (
 )
 
 var (
-	ErrNoUser   = errors.New("no such user")
-	ErrNoSearch = errors.New("no such search")
+	ErrCannotSaveNonIteration = errors.New("cannot save non-iteration search")
+	ErrNoUser                 = errors.New("no such user")
+	ErrNoSearch               = errors.New("no such search")
 )
 
 func (d *db) AddSearchForUser(userID TelegramID, search string) error {
@@ -124,7 +127,7 @@ func saveSearch(search *Search, tx *bolt.Tx) error {
 	return b.Put([]byte(search.Search), data)
 }
 
-func (d *db) DelSearchForUser(userID TelegramID, search string) error {
+func (d *db) DeleteSearchForUser(userID TelegramID, search string) error {
 	return d.b.Update(func(tx *bolt.Tx) error {
 		// Delete the user from the search.
 		so, err := getSearch(search, tx)
@@ -172,5 +175,39 @@ func (d *db) DelSearchForUser(userID TelegramID, search string) error {
 			return ErrNoSearch
 		}
 		return nil
+	})
+}
+
+// Update saves the current state of the search back to the database, if the search was loaded via iteration.
+// Otherwise, ErrCannotSaveNonIteration is returned.
+func (s *Search) Update() error {
+	if s.tx == nil {
+		return ErrCannotSaveNonIteration
+	}
+
+	return saveSearch(s, s.tx)
+}
+
+func (d *db) IterateSearches(cb SearchIterator) error {
+	return d.b.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(searchesBucket)
+		if b == nil {
+			return errors.New("could not load searches bucket")
+		}
+
+		ul := func(id TelegramID) (*User, error) {
+			return getUser(id, tx)
+		}
+
+		return b.ForEach(func(k, v []byte) error {
+			s := &Search{}
+			err := json.Unmarshal(v, s)
+			if err != nil {
+				return fmt.Errorf("unmarshalling search: %s", err)
+			}
+			s.tx = tx
+
+			return cb(s, ul)
+		})
 	})
 }

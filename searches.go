@@ -129,7 +129,7 @@ func (b *bot) delSearchCallback(m *tgbotapi.Message) {
 		"username": m.From.UserName,
 	})
 
-	err := b.db.DelSearchForUser(db.TelegramID(m.From.ID), m.Text)
+	err := b.db.DeleteSearchForUser(db.TelegramID(m.From.ID), m.Text)
 	switch err {
 	case db.ErrNoSearch:
 		b.sendMessage(m.From.ID, "I couldn't find that search.")

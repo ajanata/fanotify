@@ -49,12 +49,19 @@ type (
 	// TelegramID is the type of Telegram entity IDs.
 	TelegramID int64
 
+	// UserLoader is used to load a user while iterating over searches.
+	UserLoader func(id TelegramID) (*User, error)
+
+	SearchIterator func(search *Search, ul UserLoader) error
+
 	// DB is an interface that can load and store information in a database.
 	DB interface {
 		Close() error
 
 		AddSearchForUser(userID TelegramID, search string) error
-		DelSearchForUser(userID TelegramID, search string) error
+		DeleteSearchForUser(userID TelegramID, search string) error
+		IterateSearches(cb SearchIterator) error
+
 		GetUser(id TelegramID) (*User, error)
 		SaveUser(user *User) error
 	}
