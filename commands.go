@@ -63,25 +63,25 @@ func (b *bot) dispatchCommand(cmd *tgbotapi.Message) {
 
 	switch cmd.Command() {
 	case "addsearch":
-		b.addSearch(cmd.From)
+		b.cmdAddSearch(cmd.From)
 	case "cancel":
-		b.cancel(cmd.From)
+		b.cmdCancel(cmd.From)
 	case "delsearch":
-		b.delSearch(cmd.From)
+		b.cmdDelSearch(cmd.From)
 	case "help":
-		b.help(cmd.From)
+		b.cmdHelp(cmd.From)
 	case "listsearch":
-		b.listSearch(cmd.From)
+		b.cmdListSearch(cmd.From)
 	case "shutdown":
 		b.cmdShutdown(cmd.From)
 	case "start":
-		b.start(cmd.From)
+		b.cmdStart(cmd.From)
 	case "stop":
-		b.stop(cmd.From)
+		b.cmdStop(cmd.From)
 	}
 }
 
-func (b *bot) cancel(u *tgbotapi.User) {
+func (b *bot) cmdCancel(u *tgbotapi.User) {
 	_, existed := b.plaintextHandler[u.ID]
 	delete(b.plaintextHandler, u.ID)
 	if existed {
@@ -91,7 +91,7 @@ func (b *bot) cancel(u *tgbotapi.User) {
 	}
 }
 
-func (b *bot) help(u *tgbotapi.User) {
+func (b *bot) cmdHelp(u *tgbotapi.User) {
 	b.sendHTMLMessage(u.ID, helpMsg)
 }
 
@@ -106,9 +106,9 @@ func (b *bot) cmdShutdown(u *tgbotapi.User) {
 	log.Warn("Background goroutines complete, exiting.")
 }
 
-func (b *bot) start(u *tgbotapi.User) {
+func (b *bot) cmdStart(u *tgbotapi.User) {
 	logger := log.WithFields(log.Fields{
-		"func":     "start",
+		"func":     "cmdStart",
 		"userID":   u.ID,
 		"username": u.UserName,
 	})
@@ -145,9 +145,9 @@ func (b *bot) start(u *tgbotapi.User) {
 	b.sendMessage(u.ID, startedMsg)
 }
 
-func (b *bot) stop(u *tgbotapi.User) {
+func (b *bot) cmdStop(u *tgbotapi.User) {
 	logger := log.WithFields(log.Fields{
-		"func":     "stop",
+		"func":     "cmdStop",
 		"userID":   u.ID,
 		"username": u.UserName,
 	})

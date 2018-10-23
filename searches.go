@@ -41,12 +41,14 @@ const (
 
 Or, you can send /cancel to cancel adding a search alert.`
 
-	delSearchMsgSuffix = `\n\nPlease send the search to delete, exactly as it appears above.
+	delSearchMsgSuffix = `
+
+Please send the search to delete, exactly as it appears above.
 
 Or, you can send /cancel to cancel deleting a search alert.`
 )
 
-func (b *bot) addSearch(u *tgbotapi.User) {
+func (b *bot) cmdAddSearch(u *tgbotapi.User) {
 	if !b.userStartedBot(u.ID) {
 		return
 	}
@@ -101,7 +103,7 @@ func (b *bot) getSearchesToSend(u *tgbotapi.User) string {
 	return msg
 }
 
-func (b *bot) listSearch(u *tgbotapi.User) {
+func (b *bot) cmdListSearch(u *tgbotapi.User) {
 	msg := b.getSearchesToSend(u)
 	if msg == "" {
 		return
@@ -110,7 +112,7 @@ func (b *bot) listSearch(u *tgbotapi.User) {
 	b.sendHTMLMessage(u.ID, msg)
 }
 
-func (b *bot) delSearch(u *tgbotapi.User) {
+func (b *bot) cmdDelSearch(u *tgbotapi.User) {
 	msg := b.getSearchesToSend(u)
 	if msg == "" {
 		return
