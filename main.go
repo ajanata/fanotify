@@ -41,12 +41,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func logPanic() {
+	if err := recover(); err != nil {
+		log.WithField("error", err).Panic("Caught panic")
+	}
+}
+
 func main() {
-	defer func() {
-		if err := recover(); err != nil {
-			log.WithField("error", err).Panic("Caught panic")
-		}
-	}()
+	defer logPanic()
 
 	// Load up the config
 	c := loadConfig()
@@ -128,43 +130,7 @@ func main() {
 	log.WithField("username", tg.Self.UserName).Info("Logged in to telegram.")
 
 	// Finally, make the bot and run it.
-	bot := bot{
-		c:                c,
-		db:               d,
-		fa:               fa,
-		tg:               tg,
-		plaintextHandler: make(map[int]ptHandler),
-	}
-	bot.runLoop()
-}
-
-func (b *bot) runLoop() {
-	logger := log.WithField("func", "runLoop")
-
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates, err := b.tg.GetUpdatesChan(u)
-	if err != nil {
-		logger.WithError(err).Panic("Unable to subscribe to updates")
-	}
-
-	for update := range updates {
-		if update.Message == nil {
-			continue
-		}
-
-		logger.WithFields(log.Fields{
-			"from":       update.Message.From.UserName,
-			"text":       update.Message.Text,
-			"is_command": update.Message.IsCommand(),
-		}).Debug("incoming message")
-
-		if update.Message.IsCommand() {
-			b.dispatchCommand(update.Message)
-		} else if handler, exists := b.plaintextHandler[update.Message.From.ID]; exists {
-			handler(update.Message)
-			delete(b.plaintextHandler, update.Message.From.ID)
-		}
-	}
+	bot := newBot(c, d, fa, tg)
+	// Run does not return unless the bot is gracefully shutting down.
+	bot.run()
 }

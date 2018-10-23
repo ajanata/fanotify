@@ -19,6 +19,8 @@ ownerID = 0
 debug = false
 
 [fa]
+# How often to poll for searches/submissions.
+pollInterval = "1m"
 # Proxy server to use for FA requests. You can do something like
 # ssh -D 18080 my-awesome-server.com
 # to run a SOCKS5 proxy over an ssh connection, and then specify something like

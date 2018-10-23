@@ -29,9 +29,13 @@
 package main
 
 import (
+	"sync"
+	"time"
+
 	"github.com/ajanata/faapi"
 	"github.com/ajanata/fanotify/db"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	log "github.com/sirupsen/logrus"
 )
 
 type (
@@ -41,7 +45,83 @@ type (
 		fa               *faapi.Client
 		tg               *tgbotapi.BotAPI
 		plaintextHandler map[int]ptHandler
+		shouldQuit       chan struct{}
+		backgroundJobs   sync.WaitGroup
+		pollTimer        *time.Ticker
 	}
 
 	ptHandler func(message *tgbotapi.Message)
 )
+
+func newBot(c *Config, d db.DB, fa *faapi.Client, tg *tgbotapi.BotAPI) *bot {
+	// this is so dumb
+	pi, err := time.ParseDuration(c.FA.PollInterval.String())
+	if err != nil {
+		panic(err)
+	}
+
+	return &bot{
+		c:                c,
+		db:               d,
+		fa:               fa,
+		tg:               tg,
+		plaintextHandler: make(map[int]ptHandler),
+		shouldQuit:       make(chan struct{}),
+		pollTimer:        time.NewTicker(pi),
+	}
+}
+
+func (b *bot) run() {
+	logger := log.WithField("func", "run")
+
+	defer b.pollTimer.Stop()
+	b.backgroundJobs.Add(1)
+	go b.poller()
+
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+
+	updates, err := b.tg.GetUpdatesChan(u)
+	if err != nil {
+		logger.WithError(err).Panic("Unable to subscribe to updates")
+	}
+
+	for {
+		select {
+		case <-b.shouldQuit:
+			return
+		case update := <-updates:
+			if update.Message == nil {
+				break
+			}
+
+			logger.WithFields(log.Fields{
+				"from":       update.Message.From.UserName,
+				"text":       update.Message.Text,
+				"is_command": update.Message.IsCommand(),
+			}).Debug("incoming message")
+
+			if update.Message.IsCommand() {
+				b.dispatchCommand(update.Message)
+			} else if handler, exists := b.plaintextHandler[update.Message.From.ID]; exists {
+				handler(update.Message)
+				delete(b.plaintextHandler, update.Message.From.ID)
+			}
+		}
+	}
+}
+
+func (b *bot) poller() {
+	defer logPanic()
+	defer b.backgroundJobs.Done()
+
+	for {
+		select {
+		case <-b.shouldQuit:
+			log.Info("stopping poller")
+			return
+		case <-b.pollTimer.C:
+			log.Infof("tick %s", time.Now())
+		}
+	}
+}

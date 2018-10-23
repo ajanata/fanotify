@@ -72,6 +72,8 @@ func (b *bot) dispatchCommand(cmd *tgbotapi.Message) {
 		b.help(cmd.From)
 	case "listsearch":
 		b.listSearch(cmd.From)
+	case "shutdown":
+		b.cmdShutdown(cmd.From)
 	case "start":
 		b.start(cmd.From)
 	case "stop":
@@ -91,6 +93,17 @@ func (b *bot) cancel(u *tgbotapi.User) {
 
 func (b *bot) help(u *tgbotapi.User) {
 	b.sendHTMLMessage(u.ID, helpMsg)
+}
+
+func (b *bot) cmdShutdown(u *tgbotapi.User) {
+	if int64(u.ID) != b.c.TG.OwnerID {
+		return
+	}
+
+	log.Warn("Shutting bot down.\nWaiting for background goroutines to terminate...")
+	close(b.shouldQuit)
+	b.backgroundJobs.Wait()
+	log.Warn("Background goroutines complete, exiting.")
 }
 
 func (b *bot) start(u *tgbotapi.User) {

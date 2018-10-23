@@ -62,10 +62,11 @@ type (
 
 	// FA is the configuration for FurAffinity.
 	FA struct {
-		Cookies   []Cookie
-		Proxy     string
-		RateLimit duration `default:"10s"`
-		UserAgent string   `required:"true"`
+		Cookies      []Cookie
+		PollInterval duration `required:"true"`
+		Proxy        string
+		RateLimit    duration `required:"true"`
+		UserAgent    string   `required:"true"`
 	}
 
 	// Cookie is an HTTP cookie.
