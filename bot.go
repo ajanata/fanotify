@@ -144,7 +144,8 @@ func (b *bot) doSearches() {
 	logger.Debug("Running searches")
 
 	err := b.db.IterateSearches(func(search *db.Search, ul db.UserLoader) error {
-		logger.WithField("search", search).Debug("Iterating search")
+		sLogger := logger.WithField("search", search)
+		sLogger.Debug("Iterating search")
 
 		s := b.fa.NewSearch(search.Search)
 		subs, err := s.GetPage(1)
@@ -156,7 +157,7 @@ func (b *bot) doSearches() {
 			// only warn on this once
 			if !emptySearches[search.Search] {
 				emptySearches[search.Search] = true
-				logger.Warn("No results")
+				sLogger.Warn("No results")
 			}
 			return nil
 		}
@@ -180,14 +181,14 @@ func (b *bot) doSearches() {
 
 		if len(newSubs) == len(subs) {
 			// be lazy and don't loop on pages yet
-			logger.Error("Received an entire page of new results, some results missed!")
+			sLogger.Error("Received an entire page of new results, some results missed!")
 		}
 
 		for _, sub := range newSubs {
 			bb, err := sub.PreviewImage()
 			var fb *tgbotapi.FileBytes
 			if err != nil {
-				logger.WithField("submission", sub).WithError(err).Error("Unable to obtain preview image")
+				sLogger.WithField("submission", sub).WithError(err).Error("Unable to obtain preview image")
 			} else {
 				fb = &tgbotapi.FileBytes{
 					Name:  sub.Title,
