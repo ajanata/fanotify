@@ -70,7 +70,7 @@ func (b *bot) sendHTMLMessage(userID int, msg string, params ...interface{}) {
 
 func (b *bot) send(userID int, m tgbotapi.Chattable) {
 	logger := log.WithFields(log.Fields{
-		"func":   "sendMessageImpl",
+		"func":   "send",
 		"userID": userID,
 	})
 

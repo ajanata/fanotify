@@ -29,6 +29,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -51,6 +52,16 @@ type (
 	}
 
 	ptHandler func(message *tgbotapi.Message)
+)
+
+var (
+	emptySearches = make(map[string]bool)
+)
+
+const (
+	searchResultTemplate = `New submission for search <code>%s</code> by %s:
+
+<a href="https://www.furaffinity.net/view/%s">%s</a> (%s)`
 )
 
 func newBot(c *Config, d db.DB, fa *faapi.Client, tg *tgbotapi.BotAPI) *bot {
@@ -114,6 +125,8 @@ func (b *bot) run() {
 func (b *bot) poller() {
 	defer logPanic()
 	defer b.backgroundJobs.Done()
+	// fire it once at the start
+	b.doSearches()
 
 	for {
 		select {
@@ -130,8 +143,76 @@ func (b *bot) doSearches() {
 	logger := log.WithField("func", "doSearches")
 	logger.Debug("Running searches")
 
-	b.db.IterateSearches(func(search *db.Search, ul db.UserLoader) error {
+	err := b.db.IterateSearches(func(search *db.Search, ul db.UserLoader) error {
 		logger.WithField("search", search).Debug("Iterating search")
-		return nil
+
+		s := b.fa.NewSearch(search.Search)
+		subs, err := s.GetPage(1)
+		if err != nil {
+			return err
+		}
+
+		if len(subs) == 0 {
+			// only warn on this once
+			if !emptySearches[search.Search] {
+				emptySearches[search.Search] = true
+				logger.Warn("No results")
+			}
+			return nil
+		}
+
+		newSubs := make([]*faapi.Submission, 0)
+		if search.LastID == "" {
+			// first time this search has been run, only store the most recent ID and do nothing else
+			goto out
+		}
+
+		for _, sub := range subs {
+			if sub.ID == search.LastID {
+				break
+			}
+			newSubs = append(newSubs, sub)
+		}
+
+		if len(newSubs) == 0 {
+			return nil
+		}
+
+		if len(newSubs) == len(subs) {
+			// be lazy and don't loop on pages yet
+			logger.Error("Received an entire page of new results, some results missed!")
+		}
+
+		for _, sub := range newSubs {
+			bb, err := sub.PreviewImage()
+			var fb *tgbotapi.FileBytes
+			if err != nil {
+				logger.WithField("submission", sub).WithError(err).Error("Unable to obtain preview image")
+			} else {
+				fb = &tgbotapi.FileBytes{
+					Name:  sub.Title,
+					Bytes: bb,
+				}
+			}
+			msg := fmt.Sprintf(searchResultTemplate, search.Search, sub.User, sub.ID, sub.Title, sub.Rating)
+			for uid := range search.Users {
+				if fb != nil {
+					m := tgbotapi.NewPhotoUpload(int64(uid), *fb)
+					m.Caption = msg
+					m.ParseMode = "HTML"
+					b.send(int(uid), m)
+				} else {
+					b.sendHTMLMessage(int(uid), msg)
+				}
+			}
+		}
+
+	out:
+		search.LastID = subs[0].ID
+		search.LastRun = time.Now()
+		return search.Update()
 	})
+	if err != nil {
+		logger.WithError(err).Error("Unable to process searches")
+	}
 }
