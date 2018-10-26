@@ -43,7 +43,7 @@ type (
 		tx      *bolt.Tx
 		Search  string              `json:"search"`
 		LastRun time.Time           `json:"last_run"`
-		LastID  string              `json:"last_id"`
+		LastID  int64               `json:"last_id"`
 		Users   map[TelegramID]bool `json:"tg_users"`
 	}
 )
@@ -66,7 +66,7 @@ func (d *db) AddSearchForUser(userID TelegramID, search string) error {
 			so = &Search{
 				Search:  search,
 				LastRun: time.Unix(0, 0),
-				LastID:  "",
+				LastID:  0,
 				Users:   map[TelegramID]bool{},
 			}
 		}

@@ -41,14 +41,16 @@ import (
 
 type (
 	bot struct {
-		c                *Config
-		db               db.DB
-		fa               *faapi.Client
-		tg               *tgbotapi.BotAPI
-		plaintextHandler map[int]ptHandler
-		shouldQuit       chan struct{}
-		backgroundJobs   sync.WaitGroup
-		pollTimer        *time.Ticker
+		c                        *Config
+		db                       db.DB
+		fa                       *faapi.Client
+		tg                       *tgbotapi.BotAPI
+		plaintextHandler         map[int]ptHandler
+		shouldQuit               chan struct{}
+		backgroundJobs           sync.WaitGroup
+		pollTimer                *time.Ticker
+		userAlertedForSubmission map[int]map[int64]bool
+		userAlertedMutex         sync.Mutex
 	}
 
 	ptHandler func(message *tgbotapi.Message)
@@ -59,9 +61,9 @@ var (
 )
 
 const (
-	searchResultTemplate = `New submission for search <code>%s</code> by %s:
+	searchResultTemplate = `<b>Search:</b> <code>%s</code>: %s
 
-<a href="https://www.furaffinity.net/view/%s">%s</a> (%s)`
+by %s (%s) https://www.furaffinity.net/view/%d`
 )
 
 func newBot(c *Config, d db.DB, fa *faapi.Client, tg *tgbotapi.BotAPI) *bot {
@@ -72,13 +74,14 @@ func newBot(c *Config, d db.DB, fa *faapi.Client, tg *tgbotapi.BotAPI) *bot {
 	}
 
 	return &bot{
-		c:                c,
-		db:               d,
-		fa:               fa,
-		tg:               tg,
-		plaintextHandler: make(map[int]ptHandler),
-		shouldQuit:       make(chan struct{}),
-		pollTimer:        time.NewTicker(pi),
+		c:                        c,
+		db:                       d,
+		fa:                       fa,
+		tg:                       tg,
+		plaintextHandler:         make(map[int]ptHandler),
+		shouldQuit:               make(chan struct{}),
+		pollTimer:                time.NewTicker(pi),
+		userAlertedForSubmission: make(map[int]map[int64]bool),
 	}
 }
 
@@ -153,23 +156,24 @@ func (b *bot) doSearches() {
 			return err
 		}
 
+		newSubs := make([]*faapi.Submission, 0)
 		if len(subs) == 0 {
 			// only warn on this once
 			if !emptySearches[search.Search] {
 				emptySearches[search.Search] = true
 				sLogger.Warn("No results")
 			}
-			return nil
+			goto allOut
 		}
 
-		newSubs := make([]*faapi.Submission, 0)
-		if search.LastID == "" {
+		if search.LastID == 0 {
 			// first time this search has been run, only store the most recent ID and do nothing else
-			goto out
+			goto updateIDOut
 		}
 
 		for _, sub := range subs {
-			if sub.ID == search.LastID {
+			// submissions could be deleted, or just left out from the results randomly
+			if sub.ID <= search.LastID {
 				break
 			}
 			newSubs = append(newSubs, sub)
@@ -185,35 +189,66 @@ func (b *bot) doSearches() {
 		}
 
 		for _, sub := range newSubs {
-			bb, err := sub.PreviewImage()
-			var fb *tgbotapi.FileBytes
-			if err != nil {
-				sLogger.WithField("submission", sub).WithError(err).Error("Unable to obtain preview image")
-			} else {
-				fb = &tgbotapi.FileBytes{
-					Name:  sub.Title,
-					Bytes: bb,
-				}
-			}
-			msg := fmt.Sprintf(searchResultTemplate, search.Search, sub.User, sub.ID, sub.Title, sub.Rating)
-			for uid := range search.Users {
-				if fb != nil {
-					m := tgbotapi.NewPhotoUpload(int64(uid), *fb)
-					m.Caption = msg
-					m.ParseMode = "HTML"
-					b.send(int(uid), m)
-				} else {
-					b.sendHTMLMessage(int(uid), msg)
-				}
-			}
+			b.backgroundJobs.Add(1)
+			go b.alertForSubmission(sub, sLogger, search)
 		}
 
-	out:
+	updateIDOut:
 		search.LastID = subs[0].ID
+	allOut:
 		search.LastRun = time.Now()
 		return search.Update()
 	})
 	if err != nil {
 		logger.WithError(err).Error("Unable to process searches")
+	}
+}
+
+func (b *bot) hasUserSeenSubmission(subID int64, userID int) bool {
+	b.userAlertedMutex.Lock()
+	defer b.userAlertedMutex.Unlock()
+
+	// TODO evict entries over time
+	userAlerts := b.userAlertedForSubmission[userID]
+	if userAlerts == nil {
+		userAlerts = make(map[int64]bool)
+		b.userAlertedForSubmission[userID] = userAlerts
+	}
+	if userAlerts[subID] {
+		return true
+	}
+	userAlerts[subID] = true
+	return false
+}
+
+func (b *bot) alertForSubmission(sub *faapi.Submission, sLogger *log.Entry, search *db.Search) {
+	defer logPanic()
+	defer b.backgroundJobs.Done()
+
+	bb, err := sub.PreviewImage()
+	var fb *tgbotapi.FileBytes
+	if err != nil {
+		sLogger.WithField("submission", sub).WithError(err).Error("Unable to obtain preview image")
+	} else {
+		fb = &tgbotapi.FileBytes{
+			Name:  sub.Title,
+			Bytes: bb,
+		}
+	}
+	msg := fmt.Sprintf(searchResultTemplate, escapeHTML(search.Search), escapeHTML(sub.Title), sub.User,
+		sub.Rating, sub.ID)
+	for uid := range search.Users {
+		if b.hasUserSeenSubmission(sub.ID, int(uid)) {
+			continue
+		}
+
+		if fb != nil {
+			m := tgbotapi.NewPhotoUpload(int64(uid), *fb)
+			m.Caption = msg
+			m.ParseMode = "HTML"
+			b.send(int(uid), m)
+		} else {
+			b.sendHTMLMessage(int(uid), msg)
+		}
 	}
 }

@@ -30,6 +30,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ajanata/fanotify/db"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
@@ -68,10 +69,19 @@ func (b *bot) sendHTMLMessage(userID int, msg string, params ...interface{}) {
 	b.send(userID, m)
 }
 
+func escapeHTML(s string, params ...interface{}) string {
+	html := fmt.Sprintf(s, params...)
+	html = strings.Replace(html, "&", "&amp;", -1)
+	html = strings.Replace(html, "<", "&lt;", -1)
+	html = strings.Replace(html, ">", "&gt;", -1)
+	return html
+}
+
 func (b *bot) send(userID int, m tgbotapi.Chattable) {
 	logger := log.WithFields(log.Fields{
-		"func":   "send",
-		"userID": userID,
+		"func":    "send",
+		"userID":  userID,
+		"message": m,
 	})
 
 	if !b.userStartedBot(userID) {
