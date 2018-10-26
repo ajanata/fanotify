@@ -63,7 +63,8 @@ var (
 const (
 	searchResultTemplate = `<b>Search:</b> <code>%s</code>: %s
 
-by %s (%s) https://www.furaffinity.net/view/%d`
+by %s (%s)
+https://www.furaffinity.net/view/%d`
 )
 
 func newBot(c *Config, d db.DB, fa *faapi.Client, tg *tgbotapi.BotAPI) *bot {
