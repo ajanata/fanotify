@@ -50,7 +50,15 @@ This bot is still in development. Not all features are complete, and it may not 
 <b>Searches are not yet actually performed.</b>
 /addsearch: Add a search.
 /delsearch: Delete a search.
-/listsearch: List saved searches.`
+/listsearch: List saved searches.
+
+/addsubmissions: Add a user submissions notification.
+/delsubmissions: Delete a user submissions notification.
+/listsubmissions: List saved user submissions notifications.
+
+/addjournals: Add a user journals notification.
+/deljournals: Delete a user journals notification.
+/listjournals: List saved user journals notifications.`
 )
 
 func (b *bot) dispatchCommand(cmd *tgbotapi.Message) {
@@ -62,16 +70,28 @@ func (b *bot) dispatchCommand(cmd *tgbotapi.Message) {
 	logger.Debug("Received command")
 
 	switch cmd.Command() {
+	case "addjournals":
+		b.cmdAddJournals(cmd.From)
 	case "addsearch":
 		b.cmdAddSearch(cmd.From)
+	case "addsubmissions":
+		b.cmdAddSubmissions(cmd.From)
 	case "cancel":
 		b.cmdCancel(cmd.From)
+	case "deljournals":
+		b.cmdAddJournals(cmd.From)
 	case "delsearch":
 		b.cmdDelSearch(cmd.From)
+	case "delsubmissions":
+		b.cmdDelSubmissions(cmd.From)
 	case "help":
 		b.cmdHelp(cmd.From)
+	case "listjournals":
+		b.cmdListJournals(cmd.From)
 	case "listsearch":
 		b.cmdListSearch(cmd.From)
+	case "listsubmissions":
+		b.cmdListSubmissions(cmd.From)
 	case "shutdown":
 		b.cmdShutdown(cmd.From)
 	case "start":
@@ -113,7 +133,7 @@ func (b *bot) cmdStart(u *tgbotapi.User) {
 		"username": u.UserName,
 	})
 
-	user, err := b.db.GetUser(db.TelegramID(u.ID))
+	user, err := b.db.GetTGUser(db.TelegramID(u.ID))
 	if err != nil {
 		logger.WithError(err).Error("Could not load user")
 		b.alwaysSendMessage(u.ID, "Could not save start request, please try again later.")
@@ -128,14 +148,14 @@ func (b *bot) cmdStart(u *tgbotapi.User) {
 		}
 		user.Started = true
 	} else {
-		user = &db.User{
+		user = &db.TGUser{
 			ID:       db.TelegramID(u.ID),
 			Username: u.UserName,
 			Started:  true,
 		}
 	}
 
-	err = b.db.SaveUser(user)
+	err = b.db.SaveTGUser(user)
 	if err != nil {
 		logger.WithError(err).Error("Could not save user")
 		b.alwaysSendMessage(u.ID, "Could not save start request, please try again later.")
@@ -152,7 +172,7 @@ func (b *bot) cmdStop(u *tgbotapi.User) {
 		"username": u.UserName,
 	})
 
-	user, err := b.db.GetUser(db.TelegramID(u.ID))
+	user, err := b.db.GetTGUser(db.TelegramID(u.ID))
 	if err != nil {
 		logger.WithError(err).Error("Could not load user")
 		b.alwaysSendMessage(u.ID, "Could not save stop request, please try again later.")
@@ -164,7 +184,7 @@ func (b *bot) cmdStop(u *tgbotapi.User) {
 	}
 
 	user.Started = false
-	err = b.db.SaveUser(user)
+	err = b.db.SaveTGUser(user)
 	if err != nil {
 		logger.WithError(err).Error("Could not save user")
 		b.alwaysSendMessage(u.ID, "Could not save stop request, please try again later.")

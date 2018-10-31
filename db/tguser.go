@@ -38,30 +38,32 @@ import (
 )
 
 type (
-	// User represents a telegram user in the database.
-	User struct {
-		Username    string          `json:"username"`
-		ID          TelegramID      `json:"id"`
-		Started     bool            `json:"started"`
-		LastUpdated time.Time       `json:"last_updated"`
-		Searches    map[string]bool `json:"searches"`
+	// TGUser represents a telegram user in the database.
+	TGUser struct {
+		Username        string          `json:"username"`
+		ID              TelegramID      `json:"id"`
+		Started         bool            `json:"started"`
+		LastUpdated     time.Time       `json:"last_updated"`
+		Searches        map[string]bool `json:"searches"`
+		SubmissionUsers map[string]bool `json:"submission_users"`
+		JournalUsers    map[string]bool `json:"journal_users"`
 	}
 )
 
-// GetUser loads the user with the given ID, if the user exists. If the user
+// GetTGUser loads the user with the given ID, if the user exists. If the user
 // does not exist, nil is returned.
-func (d *db) GetUser(id TelegramID) (*User, error) {
-	var user *User
+func (d *db) GetTGUser(id TelegramID) (*TGUser, error) {
+	var user *TGUser
 	err := d.b.View(func(tx *bolt.Tx) error {
 		var err error
-		user, err = getUser(id, tx)
+		user, err = getTGUser(id, tx)
 		return err
 	})
 	return user, err
 }
 
-func getUser(id TelegramID, tx *bolt.Tx) (*User, error) {
-	b := tx.Bucket(usersBucket)
+func getTGUser(id TelegramID, tx *bolt.Tx) (*TGUser, error) {
+	b := tx.Bucket(tgUsersBucket)
 	if b == nil {
 		return nil, errors.New("could not load users bucket")
 	}
@@ -71,7 +73,7 @@ func getUser(id TelegramID, tx *bolt.Tx) (*User, error) {
 		return nil, nil
 	}
 
-	user := &User{}
+	user := &TGUser{}
 	err := json.Unmarshal(data, user)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshalling user: %s", err)
@@ -80,17 +82,17 @@ func getUser(id TelegramID, tx *bolt.Tx) (*User, error) {
 	return user, nil
 }
 
-// SaveUser saves the given user in the database, overwriting any old information about the user.
-func (d *db) SaveUser(user *User) error {
+// SaveTGUser saves the given user in the database, overwriting any old information about the user.
+func (d *db) SaveTGUser(user *TGUser) error {
 	return d.b.Update(func(tx *bolt.Tx) error {
-		return saveUser(user, tx)
+		return saveTGUser(user, tx)
 	})
 }
 
-// saveUser is a helper func to actually save the user to the DB, which may be called inside other
+// saveTGUser is a helper func to actually save the user to the DB, which may be called inside other
 // db transactions.
-func saveUser(user *User, tx *bolt.Tx) error {
-	b := tx.Bucket(usersBucket)
+func saveTGUser(user *TGUser, tx *bolt.Tx) error {
+	b := tx.Bucket(tgUsersBucket)
 	if b == nil {
 		return errors.New("could not load users bucket")
 	}

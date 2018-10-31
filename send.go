@@ -44,7 +44,7 @@ func (b *bot) userStartedBot(userID int) bool {
 		"userID": userID,
 	})
 
-	user, err := b.db.GetUser(db.TelegramID(userID))
+	user, err := b.db.GetTGUser(db.TelegramID(userID))
 	if err != nil {
 		logger.WithError(err).Error("Unable to load user")
 		return false
@@ -91,6 +91,19 @@ func (b *bot) send(userID int, m tgbotapi.Chattable) {
 	_, err := b.tg.Send(m)
 	if err != nil {
 		logger.WithError(err).Error("Unable to send message")
+	}
+}
+
+// tryToSendImage will send an image message if fb is non-nil, with msg as its HTML caption.
+// Otherwise, it will just send msg as a regular HTML message.
+func (b *bot) tryToSendImage(userID int, fb *tgbotapi.FileBytes, msg string) {
+	if fb != nil {
+		m := tgbotapi.NewPhotoUpload(int64(userID), *fb)
+		m.Caption = msg
+		m.ParseMode = "HTML"
+		b.send(userID, m)
+	} else {
+		b.sendHTMLMessage(userID, msg)
 	}
 }
 

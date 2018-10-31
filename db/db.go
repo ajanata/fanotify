@@ -29,6 +29,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -42,17 +43,22 @@ var (
 
 	metadataBucket = []byte("metadata")
 	searchesBucket = []byte("searches")
-	usersBucket    = []byte("tg_users")
+	faUsersBucket  = []byte("fa_users")
+	tgUsersBucket  = []byte("tg_users")
+
+	ErrCannotSaveNonIteration = errors.New("cannot save non-iteration item")
+	ErrNoTGUser               = errors.New("no such telegram user")
 )
 
 type (
 	// TelegramID is the type of Telegram entity IDs.
 	TelegramID int64
 
-	// UserLoader is used to load a user while iterating over searches.
-	UserLoader func(id TelegramID) (*User, error)
+	// UserLoader is used to load a user while iterating over saved items.
+	UserLoader func(id TelegramID) (*TGUser, error)
 
 	SearchIterator func(search *Search, ul UserLoader) error
+	UserIterator   func(faUser *FAUser, ul UserLoader) error
 
 	// DB is an interface that can load and store information in a database.
 	DB interface {
@@ -62,8 +68,14 @@ type (
 		DeleteSearchForUser(userID TelegramID, search string) error
 		IterateSearches(cb SearchIterator) error
 
-		GetUser(id TelegramID) (*User, error)
-		SaveUser(user *User) error
+		AddUserSubmissionsForUser(userID TelegramID, faUser string) error
+		DeleteUserSubmissionsForUser(userID TelegramID, faUser string) error
+		AddUserJournalsForUser(userID TelegramID, faUser string) error
+		DeleteUserJournalsForUser(userID TelegramID, faUser string) error
+		IterateUsers(cb UserIterator) error
+
+		GetTGUser(id TelegramID) (*TGUser, error)
+		SaveTGUser(user *TGUser) error
 	}
 
 	db struct {
@@ -98,9 +110,14 @@ func New(filename string) (DB, error) {
 			return fmt.Errorf("create searches bucket: %s", err)
 		}
 
-		_, err = tx.CreateBucketIfNotExists(usersBucket)
+		_, err = tx.CreateBucketIfNotExists(faUsersBucket)
 		if err != nil {
-			return fmt.Errorf("create users bucket: %s", err)
+			return fmt.Errorf("create furaffinity users bucket: %s", err)
+		}
+
+		_, err = tx.CreateBucketIfNotExists(tgUsersBucket)
+		if err != nil {
+			return fmt.Errorf("create telegram users bucket: %s", err)
 		}
 
 		return nil

@@ -49,9 +49,7 @@ type (
 )
 
 var (
-	ErrCannotSaveNonIteration = errors.New("cannot save non-iteration search")
-	ErrNoUser                 = errors.New("no such user")
-	ErrNoSearch               = errors.New("no such search")
+	ErrNoSearch = errors.New("no such search")
 )
 
 func (d *db) AddSearchForUser(userID TelegramID, search string) error {
@@ -78,18 +76,18 @@ func (d *db) AddSearchForUser(userID TelegramID, search string) error {
 		}
 
 		// Add the search to the user.
-		user, err := getUser(userID, tx)
+		user, err := getTGUser(userID, tx)
 		if err != nil {
 			return err
 		}
 		if user == nil {
-			return ErrNoUser
+			return ErrNoTGUser
 		}
 		if user.Searches == nil {
 			user.Searches = make(map[string]bool)
 		}
 		user.Searches[search] = true
-		return saveUser(user, tx)
+		return saveTGUser(user, tx)
 	})
 }
 
@@ -108,7 +106,7 @@ func getSearch(search string, tx *bolt.Tx) (*Search, error) {
 	s := &Search{}
 	err := json.Unmarshal(data, s)
 	if err != nil {
-		return s, fmt.Errorf("unmarshalling search: %s", err)
+		return nil, fmt.Errorf("unmarshalling search: %s", err)
 	}
 	return s, nil
 }
@@ -154,19 +152,19 @@ func (d *db) DeleteSearchForUser(userID TelegramID, search string) error {
 		}
 
 		// Delete the search from the user.
-		user, err := getUser(userID, tx)
+		user, err := getTGUser(userID, tx)
 		if err != nil {
 			return err
 		}
 		if user == nil {
-			return ErrNoUser
+			return ErrNoTGUser
 		}
 		if user.Searches == nil {
 			user.Searches = make(map[string]bool)
 		}
 		existed = existed && user.Searches[search]
 		delete(user.Searches, search)
-		err = saveUser(user, tx)
+		err = saveTGUser(user, tx)
 		if err != nil {
 			return err
 		}
@@ -195,8 +193,8 @@ func (d *db) IterateSearches(cb SearchIterator) error {
 			return errors.New("could not load searches bucket")
 		}
 
-		ul := func(id TelegramID) (*User, error) {
-			return getUser(id, tx)
+		ul := func(id TelegramID) (*TGUser, error) {
+			return getTGUser(id, tx)
 		}
 
 		return b.ForEach(func(k, v []byte) error {
@@ -207,6 +205,8 @@ func (d *db) IterateSearches(cb SearchIterator) error {
 			}
 			s.tx = tx
 
+			// TODO maybe we shouldn't immediately return the error from the callback?
+			// If it's a transient FA error, we probably should keep trying the rest.
 			return cb(s, ul)
 		})
 	})

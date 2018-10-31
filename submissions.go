@@ -37,45 +37,47 @@ import (
 )
 
 const (
-	addSearchMsg = `Send me a message with the search you wish to perform, exactly how you would enter it in FurAffinity's search box.
+	addSubmissionsMsg = `Send me a message with the username you wish to monitor for new submissions. It doesn't matter if you don't get the case right.
 
-Or, you can send /cancel to cancel adding a search alert.`
+Or, you can send /cancel to cancel adding a submission alert.`
 
-	delSearchMsgSuffix = `
+	delSubmissionsMsgSuffix = `
 
-Please send the search to delete, exactly as it appears above.
+Please send the username you no longer wish to monitor for new submission.
 
-Or, you can send /cancel to cancel deleting a search alert.`
+Or, you can send /cancel to cancel deleting a submission alert.`
 )
 
-func (b *bot) cmdAddSearch(u *tgbotapi.User) {
+func (b *bot) cmdAddSubmissions(u *tgbotapi.User) {
 	if !b.userStartedBot(u.ID) {
 		return
 	}
 
-	b.plaintextHandler[u.ID] = b.addSearchCallback
-	b.sendMessage(u.ID, addSearchMsg)
+	b.plaintextHandler[u.ID] = b.addSubmissionsCallback
+	b.sendMessage(u.ID, addSubmissionsMsg)
 }
 
-func (b *bot) addSearchCallback(m *tgbotapi.Message) {
+func (b *bot) addSubmissionsCallback(m *tgbotapi.Message) {
 	logger := log.WithFields(log.Fields{
-		"func":     "addSearchCallback",
+		"func":     "addSubmissionsCallback",
 		"userID":   m.From.ID,
 		"username": m.From.UserName,
 	})
 
-	err := b.db.AddSearchForUser(db.TelegramID(m.From.ID), m.Text)
+	// TODO make sure it's a valid fa username
+
+	err := b.db.AddUserSubmissionsForUser(db.TelegramID(m.From.ID), m.Text)
 	if err != nil {
-		logger.WithError(err).Error("Unable to add search for user")
-		b.sendMessage(m.From.ID, fmt.Sprintf(saveFailedFormat, "search alert"))
+		logger.WithError(err).Error("Unable to add submissions for user")
+		b.sendMessage(m.From.ID, fmt.Sprintf(saveFailedFormat, "user submission alert"))
 	} else {
-		b.sendHTMLMessage(m.From.ID, "I will alert you to any new submissions that match <code>%s</code> now.", m.Text)
+		b.sendHTMLMessage(m.From.ID, "I will alert you to any new submissions from <code>%s</code> now.", m.Text)
 	}
 }
 
-func (b *bot) getSearchesToSend(u *tgbotapi.User) string {
+func (b *bot) getMonitoredUsersToSend(u *tgbotapi.User, journals bool) string {
 	logger := log.WithFields(log.Fields{
-		"func":     "getSearchesToSend",
+		"func":     "getMonitoredUsersToSend",
 		"userID":   u.ID,
 		"username": u.UserName,
 	})
@@ -84,59 +86,72 @@ func (b *bot) getSearchesToSend(u *tgbotapi.User) string {
 		return ""
 	}
 
+	which := "submission"
+	if journals {
+		which = "journal"
+	}
+
 	user, err := b.db.GetTGUser(db.TelegramID(u.ID))
 	if err != nil {
 		logger.WithError(err).Error("Could not load user")
-		b.sendMessage(u.ID, loadFailedFormat, "your saved searches")
+		b.sendMessage(u.ID, loadFailedFormat,
+			fmt.Sprintf("your saved user %s alerts", which))
 		return ""
 	}
 
 	if len(user.Searches) == 0 {
-		b.sendMessage(u.ID, "You don't have any searches saved. Send /addsearch to get started!")
+		b.sendMessage(u.ID, "You don't have any user %s alerts saved. Send /add%s to get started!",
+			which, which)
 		return ""
 	}
 
-	msg := "You have the following searches saved:"
-	for s := range user.Searches {
+	msg := fmt.Sprintf("You have the following user %s alerts saved:", which)
+	var m map[string]bool
+	if journals {
+		m = user.JournalUsers
+	} else {
+		m = user.SubmissionUsers
+	}
+	for s := range m {
 		msg = fmt.Sprintf("%s\n<code>%s</code>", msg, s)
 	}
 	return msg
 }
 
-func (b *bot) cmdListSearch(u *tgbotapi.User) {
-	msg := b.getSearchesToSend(u)
+func (b *bot) cmdListSubmissions(u *tgbotapi.User) {
+	msg := b.getMonitoredUsersToSend(u, false)
 	if msg == "" {
 		return
 	}
-	msg = msg + "\n\nSend /delsearch to remove one."
+	msg = msg + "\n\nSend /delsubmissions to remove one."
 	b.sendHTMLMessage(u.ID, msg)
 }
 
-func (b *bot) cmdDelSearch(u *tgbotapi.User) {
-	msg := b.getSearchesToSend(u)
+func (b *bot) cmdDelSubmissions(u *tgbotapi.User) {
+	msg := b.getMonitoredUsersToSend(u, false)
 	if msg == "" {
 		return
 	}
 
-	b.plaintextHandler[u.ID] = b.delSearchCallback
-	b.sendHTMLMessage(u.ID, msg+delSearchMsgSuffix)
+	b.plaintextHandler[u.ID] = b.delSubmissionsCallback
+	b.sendHTMLMessage(u.ID, msg+delSubmissionsMsgSuffix)
 }
 
-func (b *bot) delSearchCallback(m *tgbotapi.Message) {
+func (b *bot) delSubmissionsCallback(m *tgbotapi.Message) {
 	logger := log.WithFields(log.Fields{
-		"func":     "delSearchCallback",
+		"func":     "delSubmissionsCallback",
 		"userID":   m.From.ID,
 		"username": m.From.UserName,
 	})
 
-	err := b.db.DeleteSearchForUser(db.TelegramID(m.From.ID), m.Text)
+	err := b.db.DeleteUserSubmissionsForUser(db.TelegramID(m.From.ID), m.Text)
 	switch err {
-	case db.ErrNoSearch:
-		b.sendMessage(m.From.ID, "I couldn't find that search.")
+	case db.ErrNoFAUser:
+		b.sendMessage(m.From.ID, "I couldn't find that user.")
 	case nil:
-		b.sendHTMLMessage(m.From.ID, "I will no longer alert you to any new submissions that match <code>%s</code>.", m.Text)
+		b.sendHTMLMessage(m.From.ID, "I will no longer alert you to any new submissions from <code>%s</code>.", m.Text)
 	default:
-		logger.WithError(err).Error("Unable to delete search for user")
-		b.sendMessage(m.From.ID, fmt.Sprintf(saveFailedFormat, "search alert deletion"))
+		logger.WithError(err).Error("Unable to delete submissions for user")
+		b.sendMessage(m.From.ID, fmt.Sprintf(saveFailedFormat, "user submission alert deletion"))
 	}
 }
