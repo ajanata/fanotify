@@ -66,7 +66,13 @@ type (
 		PollInterval duration `required:"true"`
 		Proxy        string
 		RateLimit    duration `required:"true"`
-		UserAgent    string   `required:"true"`
+		// RequestTimeout is the timeout for a single attempt at the request.
+		RequestTimeout duration
+		RetryDelay     duration
+		RetryLimit     int
+		// Timeout is the timeout on the entire request, including retries.
+		Timeout   duration
+		UserAgent string `required:"true"`
 	}
 
 	// Cookie is an HTTP cookie.
@@ -100,15 +106,23 @@ func (c *FA) faAPIConfig() faapi.Config {
 			Value: cookie.Value,
 		}
 	}
+	return faapi.Config{
+		Cookies:        cookies,
+		Proxy:          c.Proxy,
+		RateLimit:      c.RateLimit.convert(),
+		RequestTimeout: c.RequestTimeout.convert(),
+		RetryDelay:     c.RetryDelay.convert(),
+		RetryLimit:     c.RetryLimit,
+		Timeout:        c.Timeout.convert(),
+		UserAgent:      c.UserAgent,
+	}
+}
+
+func (d duration) convert() time.Duration {
 	// this is so dumb
-	rl, err := time.ParseDuration(c.RateLimit.String())
+	td, err := time.ParseDuration(d.String())
 	if err != nil {
 		panic(err)
 	}
-	return faapi.Config{
-		Cookies:   cookies,
-		Proxy:     c.Proxy,
-		RateLimit: rl,
-		UserAgent: c.UserAgent,
-	}
+	return td
 }

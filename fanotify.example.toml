@@ -19,7 +19,8 @@ ownerID = 0
 debug = false
 
 [fa]
-# How often to poll for searches/submissions.
+# How often to poll for searches/submissions. You can use common
+# suffixes; see https://golang.org/pkg/time/#ParseDuration
 pollInterval = "1m"
 # Proxy server to use for FA requests. You can do something like
 # ssh -D 18080 my-awesome-server.com
@@ -29,9 +30,18 @@ pollInterval = "1m"
 proxy = ""
 # You probably want to set this to what your browser says it is.
 userAgent = "fanotify/faapi/go"
-# Requests to FA will not occur more frequently than this. You can use common
-# suffixes; see https://golang.org/pkg/time/#ParseDuration
+# Requests to FA will not occur more frequently than this.
 rateLimit = "10s"
+# The maximum amount of time for a single request to FA, including any retries.
+# This should be at least as long as requestTimeout times retryLimit.
+timeout = "1m"
+# The maximum amount of time for a single request attempt to FA.
+requestTimeout = "15s"
+# The delay between retries for a single request.
+retryDelay = "5s"
+# How many times to retry a single request, whether it timed out or got an error
+# code back from FA or Cloudflare.
+retryLimit = 3
 
 # Cookies to set on requests to FA. If you don't provide valid cookies that will
 # get you logged in to an account, only general-rated artwork will be returned.
