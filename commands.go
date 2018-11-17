@@ -47,7 +47,6 @@ In most circumstances, you should only be notified once about a particular submi
 
 This bot is still in development. Not all features are complete, and it may not have great uptime.
 
-<b>Searches are not yet actually performed.</b>
 /addsearch: Add a search.
 /delsearch: Delete a search.
 /listsearch: List saved searches.
