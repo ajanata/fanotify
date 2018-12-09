@@ -30,13 +30,15 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/ajanata/fanotify/db"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
+	tooManyMonitorsFormat       = "You're already monitoring %d users, which is the maximum allowed. Please remove a user from monitoring to add a new one."
+	tooManyTotalUserMonitorsMsg = "This bot is already monitoring the maximum number of users it is configured to allow."
+
 	addSubmissionsMsg = `Send me a message with the username you wish to monitor for new submissions. It doesn't matter if you don't get the case right.
 
 Or, you can send /cancel to cancel adding a submission alert.`
@@ -49,8 +51,25 @@ Or, you can send /cancel to cancel deleting a submission alert.`
 )
 
 func (b *bot) cmdAddSubmissions(u *tgbotapi.User) {
+	logger := log.WithFields(log.Fields{
+		"func":     "cmdAddSubmissions",
+		"userID":   u.ID,
+		"username": u.UserName,
+	})
+
 	if !b.userStartedBot(u.ID) {
 		return
+	}
+
+	// dbu, err := b.db.GetTGUser(db.TelegramID(u.ID))
+	// if err != nil {
+	// 	logger.WithError(err).Error("Unable to load user")
+	// 	b.sendMessage(u.ID, loadFailedFormat, "your saved user %s alerts")
+	// }
+
+	if false {
+		logger.Warn("User already at maximum user monitor limit")
+		b.sendMessage(u.ID, tooManyMonitorsFormat, b.c.PerUserMaxUserMonitors)
 	}
 
 	b.plaintextHandler[u.ID] = b.addSubmissionsCallback
@@ -75,6 +94,30 @@ func (b *bot) addSubmissionsCallback(m *tgbotapi.Message) {
 	}
 }
 
+func (b *bot) loadMonitoredUsers(u *tgbotapi.User) (submissionUsers, journalUsers []string, err error) {
+	logger := log.WithFields(log.Fields{
+		"func":     "loadMonitoredUsers",
+		"userID":   u.ID,
+		"username": u.UserName,
+	})
+
+	user, err := b.db.GetTGUser(db.TelegramID(u.ID))
+	if err != nil {
+		logger.WithError(err).Error("Could not load user")
+		return submissionUsers, journalUsers, err
+	}
+
+	for su := range user.SubmissionUsers {
+		submissionUsers = append(submissionUsers, su)
+	}
+
+	for ju := range user.JournalUsers {
+		journalUsers = append(journalUsers, ju)
+	}
+
+	return submissionUsers, journalUsers, nil
+}
+
 func (b *bot) getMonitoredUsersToSend(u *tgbotapi.User, journals bool) string {
 	logger := log.WithFields(log.Fields{
 		"func":     "getMonitoredUsersToSend",
@@ -86,12 +129,13 @@ func (b *bot) getMonitoredUsersToSend(u *tgbotapi.User, journals bool) string {
 		return ""
 	}
 
+	su, ju, err := b.loadMonitoredUsers(u)
 	which := "submission"
+	users := su
 	if journals {
 		which = "journal"
+		users = ju
 	}
-
-	user, err := b.db.GetTGUser(db.TelegramID(u.ID))
 	if err != nil {
 		logger.WithError(err).Error("Could not load user")
 		b.sendMessage(u.ID, loadFailedFormat,
@@ -99,21 +143,15 @@ func (b *bot) getMonitoredUsersToSend(u *tgbotapi.User, journals bool) string {
 		return ""
 	}
 
-	if len(user.Searches) == 0 {
+	if len(users) == 0 {
 		b.sendMessage(u.ID, "You don't have any user %s alerts saved. Send /add%s to get started!",
 			which, which)
 		return ""
 	}
 
 	msg := fmt.Sprintf("You have the following user %s alerts saved:", which)
-	var m map[string]bool
-	if journals {
-		m = user.JournalUsers
-	} else {
-		m = user.SubmissionUsers
-	}
-	for s := range m {
-		msg = fmt.Sprintf("%s\n<code>%s</code>", msg, s)
+	for _, u := range users {
+		msg = fmt.Sprintf("%s\n<code>%s</code>", msg, u)
 	}
 	return msg
 }

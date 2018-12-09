@@ -1,13 +1,22 @@
 # FA Notify configuration file
 
-# Set TG client to debug mode, and also run a pprof debug server on
-# http://localhost:6680/debug/pprof/
+# Run a pprof debug server on http://localhost:6680/debug/pprof/
 debug = true
 logLevel = "DEBUG"
 # For colors in log output, useful in IDEs that properly interpret them but don't show up as TTYs
 logForceColors = true
 # Output logs in JSON format instead. Overrides logForceColors.
 logJSON = false
+# The maximum number of FA users a single bot user is allowed to monitor for submissions and journals.
+perUserMaxUserMonitors = 10
+# The maximum number of FA users that all bot users are allowed to monitor, combined.
+# Multiple bot users that monitor the same FA user do not count double.
+globalMaxUserMonitors = 1000
+# The maximum number of searches each bot user is allowed to monitor.
+perUserMaxSearches = 10
+# The maximum number of searches that all bot users are allowed to monitor, combined.
+# Multiple bot users that monitor the exact same search do not count double.
+globalMaxSearches = 1000
 
 [tg]
 # Get this token from @BotFather when you create your bot.
@@ -16,6 +25,7 @@ token = ""
 # every "error" level log message.
 # You can use @userinfobot to get your user ID.
 ownerID = 0
+# Set TG client to debug mode, which logs a lot.
 debug = false
 
 [fa]

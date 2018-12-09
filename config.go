@@ -42,9 +42,16 @@ type (
 		LogLevel       string `default:"INFO"`
 		LogForceColors bool   `default:"false"`
 		LogJSON        bool   `default:"false"`
-		DB             DB
-		FA             FA
-		TG             TG
+
+		PerUserMaxUserMonitors int `default:"10"`
+		GlobalMaxUserMonitors  int `default:"1000"`
+
+		PerUserMaxSearches int `default:"10"`
+		GlobalMaxSearches  int `default:"1000"`
+
+		DB DB
+		FA FA
+		TG TG
 	}
 
 	// DB is the database configuration.
