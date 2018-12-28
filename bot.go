@@ -173,7 +173,9 @@ func (b *bot) doSearches() {
 			return err
 		}
 
+		// we'll need this later but we're goto-ing over it.
 		newSubs := make([]*faapi.Submission, 0)
+
 		if len(subs) == 0 {
 			goto allOut
 		}
@@ -199,6 +201,9 @@ func (b *bot) doSearches() {
 			// be lazy and don't loop on pages yet
 			sLogger.Error("Received an entire page of new results, some results missed!")
 		}
+
+		// pre-fetch all of the preview images asynchronously
+		b.cacheThumbnails(newSubs)
 
 		for i := len(newSubs) - 1; i >= 0; i-- {
 			b.alertForSearchResult(newSubs[i], search)
@@ -324,6 +329,9 @@ func (b *bot) handleUserSubmissions(faUser *db.FAUser, ul db.UserLoader, subs []
 		logger.Error("Received more submissions than recents can show, some missed!")
 	}
 
+	// pre-fetch all of the preview images asynchronously
+	b.cacheThumbnails(newSubs)
+
 	for i := len(newSubs) - 1; i >= 0; i-- {
 		b.alertForUserSubmission(newSubs[i], faUser)
 	}
@@ -409,4 +417,18 @@ func (b *bot) alertForUserJournal(journ *faapi.Journal, faUser *db.FAUser) {
 		}
 		b.sendHTMLMessage(int(uid), msg)
 	}
+}
+
+func (b *bot) cacheThumbnails(subs []*faapi.Submission) {
+	wg := sync.WaitGroup{}
+	wg.Add(len(subs))
+	for _, sub := range subs {
+		go func() {
+			// Submission caches the image, so we just need to invoke this to make it download.
+			// If there's an error, it won't cache that and will try again later and return the error if it recurs.
+			_, _ = sub.PreviewImage()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 }
