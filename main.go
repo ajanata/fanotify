@@ -78,7 +78,7 @@ func main() {
 	hook, err := telegram_hook.NewTelegramHook("FANotifierBot", c.TG.Token, strconv.FormatInt(c.TG.OwnerID, 10),
 		telegram_hook.WithTimeout(15*time.Second))
 	if err != nil {
-		log.WithError(err).Fatal("Unable to create telegram log hook.")
+		log.WithError(err).Fatal("Unable to create Telegram log hook.")
 	}
 	hook.Level = log.InfoLevel
 	log.AddHook(hook)
@@ -126,14 +126,14 @@ func main() {
 	// Make the Telegram bot API.
 	tg, err := tgbotapi.NewBotAPI(c.TG.Token)
 	if err != nil {
-		log.WithError(err).Fatal("Unable to create telegram client!")
+		log.WithError(err).Fatal("Unable to create Telegram client!")
 	}
 	tg.Debug = c.TG.Debug
 	err = tgbotapi.SetLogger(tglogger{})
 	if err != nil {
-		log.WithError(err).Fatal("Unable to set telegram client logger")
+		log.WithError(err).Fatal("Unable to set Telegram client logger")
 	}
-	log.WithField("username", tg.Self.UserName).Info("Logged in to telegram.")
+	log.WithField("username", tg.Self.UserName).Info("Logged in to Telegram.")
 
 	// Finally, make the bot and run it.
 	bot := newBot(c, d, fa, tg)
