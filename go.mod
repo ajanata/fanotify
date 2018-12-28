@@ -14,7 +14,9 @@ require (
 	github.com/kr/pty v1.1.3 // indirect
 	github.com/sirupsen/logrus v1.2.0
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
-	golang.org/x/net v0.0.0-20181114220301-adae6a3d119a // indirect
+	golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9 // indirect
+	golang.org/x/net v0.0.0-20181220203305-927f97764cc3 // indirect
+	golang.org/x/sys v0.0.0-20181221143128-b4a75ba826a6 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/yaml.v2 v2.2.1 // indirect
+	gopkg.in/yaml.v2 v2.2.2 // indirect
 )
