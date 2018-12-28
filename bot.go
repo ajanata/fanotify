@@ -138,8 +138,7 @@ func (b *bot) poller() {
 	defer logPanic()
 	defer b.backgroundJobs.Done()
 	// fire it once at the start
-	b.doSearches()
-	b.doUserMonitoring()
+	b.processJobs()
 
 	for {
 		select {
@@ -147,10 +146,17 @@ func (b *bot) poller() {
 			log.Info("stopping poller")
 			return
 		case <-b.pollTimer.C:
-			b.doSearches()
-			b.doUserMonitoring()
+			b.processJobs()
 		}
 	}
+}
+
+func (b *bot) processJobs() {
+	// Everything runs synchronously in this thread right now. This might need changed eventually.
+	log.Debug("Starting jobs")
+	b.doSearches()
+	b.doUserMonitoring()
+	log.Debug("Done with jobs")
 }
 
 func (b *bot) doSearches() {
@@ -194,9 +200,8 @@ func (b *bot) doSearches() {
 			sLogger.Error("Received an entire page of new results, some results missed!")
 		}
 
-		for _, sub := range newSubs {
-			b.backgroundJobs.Add(1)
-			go b.alertForSearchResult(sub, search)
+		for i := len(newSubs) - 1; i >= 0; i-- {
+			b.alertForSearchResult(newSubs[i], search)
 		}
 
 	updateIDOut:
@@ -228,9 +233,6 @@ func (b *bot) hasUserSeenID(subID int64, userID int) bool {
 }
 
 func (b *bot) alertForSearchResult(sub *faapi.Submission, search *db.Search) {
-	defer logPanic()
-	defer b.backgroundJobs.Done()
-
 	logger := log.WithFields(log.Fields{
 		"func":   "alertForSearchResult",
 		"sub":    sub,
@@ -322,9 +324,8 @@ func (b *bot) handleUserSubmissions(faUser *db.FAUser, ul db.UserLoader, subs []
 		logger.Error("Received more submissions than recents can show, some missed!")
 	}
 
-	for _, sub := range newSubs {
-		b.backgroundJobs.Add(1)
-		go b.alertForUserSubmission(sub, faUser)
+	for i := len(newSubs) - 1; i >= 0; i-- {
+		b.alertForUserSubmission(newSubs[i], faUser)
 	}
 
 updateIDOut:
@@ -333,9 +334,6 @@ updateIDOut:
 }
 
 func (b *bot) alertForUserSubmission(sub *faapi.Submission, faUser *db.FAUser) {
-	defer logPanic()
-	defer b.backgroundJobs.Done()
-
 	logger := log.WithFields(log.Fields{
 		"func":   "alertForUserSubmission",
 		"sub":    sub,
@@ -394,9 +392,8 @@ func (b *bot) handleUserJournals(faUser *db.FAUser, ul db.UserLoader, journs []*
 		logger.Error("Received more journals than recents can show, some missed!")
 	}
 
-	for _, journ := range newJourns {
-		b.backgroundJobs.Add(1)
-		go b.alertForUserJournal(journ, faUser)
+	for i := len(newJourns) - 1; i >= 0; i-- {
+		b.alertForUserJournal(newJourns[i], faUser)
 	}
 
 updateIDOut:
@@ -405,9 +402,6 @@ updateIDOut:
 }
 
 func (b *bot) alertForUserJournal(journ *faapi.Journal, faUser *db.FAUser) {
-	defer logPanic()
-	defer b.backgroundJobs.Done()
-
 	msg := fmt.Sprintf(journalTemplate, escapeHTML(journ.Title), journ.User, journ.ID)
 	for uid := range faUser.JournalUsers {
 		if b.hasUserSeenID(journ.ID, int(uid)) {
