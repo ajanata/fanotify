@@ -61,11 +61,17 @@ func main() {
 	}
 	log.SetLevel(level)
 
-	if c.LogForceColors {
-		log.SetFormatter(&log.TextFormatter{ForceColors: true})
-	}
 	if c.LogJSON {
 		log.SetFormatter(&log.JSONFormatter{})
+	} else if c.LogForceColors {
+		log.SetFormatter(&log.TextFormatter{
+			ForceColors:   true,
+			FullTimestamp: true,
+		})
+	} else {
+		log.SetFormatter(&log.TextFormatter{
+			FullTimestamp: true,
+		})
 	}
 
 	// Add Telegram log hook
