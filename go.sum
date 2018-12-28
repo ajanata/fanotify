@@ -12,6 +12,8 @@ github.com/ajanata/faapi v0.0.0-20181030041028-3860b1780287 h1:XOiCElmhd1dIruW5x
 github.com/ajanata/faapi v0.0.0-20181030041028-3860b1780287/go.mod h1:1z9RUxEqXpEy6FgFwBuyuXOG8kDzr42lgPzM/KdmaM0=
 github.com/ajanata/faapi v0.0.0-20181117041226-18f0cbc3690d h1:U0QQ/wHB1gpbJSMzFrPqk1AJGGr6ERyKJkCe2XH9VxQ=
 github.com/ajanata/faapi v0.0.0-20181117041226-18f0cbc3690d/go.mod h1:mgwjzTv2c9+qMgpp8GvQVZ/KAJiW84yZ1ZMHHUTyyd4=
+github.com/ajanata/faapi v0.0.0-20181228051333-db3b26829cb5 h1:66LKfKQfOPDE2G+jOLSF1+J9aaT5hRI1HCBAaOWWKzA=
+github.com/ajanata/faapi v0.0.0-20181228051333-db3b26829cb5/go.mod h1:mgwjzTv2c9+qMgpp8GvQVZ/KAJiW84yZ1ZMHHUTyyd4=
 github.com/ajanata/telegram_hook v0.0.0-20181020011900-0ce3aa8479e0 h1:B9ScChghpa7gFShbcX6Cog3xo0DdAGcB51uqsqLMNbY=
 github.com/ajanata/telegram_hook v0.0.0-20181020011900-0ce3aa8479e0/go.mod h1:GwD3CzzOOCJnVXlLcom3TqsZgz3DSorY3WUs92rSxYA=
 github.com/ajanata/telegram_hook v0.0.0-20181020012616-e8b41b217c49 h1:yCL+kDFEux18Oxv7RjyZJMrGP1R7LviDeE6XHzuASMU=

@@ -2,7 +2,7 @@ module github.com/ajanata/fanotify
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/ajanata/faapi v0.0.0-20181117041226-18f0cbc3690d
+	github.com/ajanata/faapi v0.0.0-20181228051333-db3b26829cb5
 	github.com/ajanata/telegram_hook v0.0.0-20181020014339-eaf89245ed27
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/etcd-io/bbolt v1.3.0

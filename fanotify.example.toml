@@ -31,6 +31,7 @@ proxy = ""
 # You probably want to set this to what your browser says it is.
 userAgent = "fanotify/faapi/go"
 # Requests to FA will not occur more frequently than this.
+# Note: Requests of facdn (for downloading images) are not constrained by this.
 rateLimit = "10s"
 # The maximum amount of time for a single request to FA, including any retries.
 # This should be at least as long as requestTimeout times retryLimit.
