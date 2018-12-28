@@ -57,10 +57,6 @@ type (
 	ptHandler func(message *tgbotapi.Message)
 )
 
-var (
-	emptySearches = make(map[string]bool)
-)
-
 const (
 	searchResultTemplate = `<b>Search:</b> <code>%s</code>: %s
 
@@ -118,6 +114,7 @@ func (b *bot) run() {
 			return
 		case update := <-updates:
 			if update.Message == nil {
+				logger.WithField("update", update).Error("Update does not contain a message")
 				break
 			}
 
@@ -172,11 +169,6 @@ func (b *bot) doSearches() {
 
 		newSubs := make([]*faapi.Submission, 0)
 		if len(subs) == 0 {
-			// only warn on this once
-			if !emptySearches[search.Search] {
-				emptySearches[search.Search] = true
-				sLogger.Warn("No results")
-			}
 			goto allOut
 		}
 
