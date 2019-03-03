@@ -2,7 +2,7 @@ module github.com/ajanata/fanotify
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/ajanata/faapi v0.0.0-20190303191322-d1f52b16a007
+	github.com/ajanata/faapi v0.0.0-20190303194903-854c78dd17a4
 	github.com/ajanata/telegram_hook v0.0.0-20181020014339-eaf89245ed27
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/etcd-io/bbolt v1.3.0
@@ -18,7 +18,7 @@ require (
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25 // indirect
 	golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95 // indirect
-	golang.org/x/sys v0.0.0-20190303122642-d455e41777fc // indirect
+	golang.org/x/sys v0.0.0-20190303192550-c2f5717e611c // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.2.2 // indirect
 )

@@ -16,6 +16,8 @@ github.com/ajanata/faapi v0.0.0-20181228051333-db3b26829cb5 h1:66LKfKQfOPDE2G+jO
 github.com/ajanata/faapi v0.0.0-20181228051333-db3b26829cb5/go.mod h1:mgwjzTv2c9+qMgpp8GvQVZ/KAJiW84yZ1ZMHHUTyyd4=
 github.com/ajanata/faapi v0.0.0-20190303191322-d1f52b16a007 h1:9ntulf4HOxlyTEraSc2E07xs9kaahU0hXiMlqNHg+XA=
 github.com/ajanata/faapi v0.0.0-20190303191322-d1f52b16a007/go.mod h1:mgwjzTv2c9+qMgpp8GvQVZ/KAJiW84yZ1ZMHHUTyyd4=
+github.com/ajanata/faapi v0.0.0-20190303194903-854c78dd17a4 h1:SiOGJ2vHr9rFlj4XzpDQAvHswXn8vxWpXN9DeLQu7kQ=
+github.com/ajanata/faapi v0.0.0-20190303194903-854c78dd17a4/go.mod h1:mgwjzTv2c9+qMgpp8GvQVZ/KAJiW84yZ1ZMHHUTyyd4=
 github.com/ajanata/telegram_hook v0.0.0-20181020011900-0ce3aa8479e0 h1:B9ScChghpa7gFShbcX6Cog3xo0DdAGcB51uqsqLMNbY=
 github.com/ajanata/telegram_hook v0.0.0-20181020011900-0ce3aa8479e0/go.mod h1:GwD3CzzOOCJnVXlLcom3TqsZgz3DSorY3WUs92rSxYA=
 github.com/ajanata/telegram_hook v0.0.0-20181020012616-e8b41b217c49 h1:yCL+kDFEux18Oxv7RjyZJMrGP1R7LviDeE6XHzuASMU=
@@ -101,6 +103,7 @@ golang.org/x/sys v0.0.0-20181116161606-93218def8b18/go.mod h1:STP8DvDyc/dI5b8T5h
 golang.org/x/sys v0.0.0-20181221143128-b4a75ba826a6/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190303122642-d455e41777fc/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20190303192550-c2f5717e611c/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
