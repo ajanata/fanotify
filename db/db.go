@@ -72,7 +72,7 @@ type (
 		DeleteUserSubmissionsForUser(userID TelegramID, faUser string) error
 		AddUserJournalsForUser(userID TelegramID, faUser string) error
 		DeleteUserJournalsForUser(userID TelegramID, faUser string) error
-		IterateUsers(cb UserIterator) error
+		IterateFAUsers(cb UserIterator) error
 
 		GetTGUser(id TelegramID) (*TGUser, error)
 		SaveTGUser(user *TGUser) error

@@ -244,7 +244,7 @@ func (d *db) DeleteUserJournalsForUser(userID TelegramID, faUser string) error {
 	})
 }
 
-func (d *db) IterateUsers(cb UserIterator) error {
+func (d *db) IterateFAUsers(cb UserIterator) error {
 	return d.b.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(faUsersBucket)
 		if b == nil {

@@ -268,7 +268,7 @@ func (b *bot) doUserMonitoring() {
 	logger := log.WithField("func", "doUserMonitoring")
 	logger.Debug("Monitoring users")
 
-	err := b.db.IterateUsers(func(faUser *db.FAUser, ul db.UserLoader) error {
+	err := b.db.IterateFAUsers(func(faUser *db.FAUser, ul db.UserLoader) error {
 		uLogger := logger.WithField("faUser", faUser)
 		uLogger.Debug("Iterating user")
 

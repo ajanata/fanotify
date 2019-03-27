@@ -97,6 +97,8 @@ func (b *bot) dispatchCommand(cmd *tgbotapi.Message) {
 		b.cmdStart(cmd.From)
 	case "stop":
 		b.cmdStop(cmd.From)
+	default:
+		b.sendMessage(cmd.From.ID, "Sorry, I don't recognize that command.")
 	}
 }
 
