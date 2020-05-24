@@ -254,8 +254,22 @@ func (b *bot) alertForSearchResult(sub *faapi.Submission, search *db.Search) {
 			Bytes: bb,
 		}
 	}
-	msg := fmt.Sprintf(searchResultTemplate, escapeHTML(search.Search), escapeHTML(sub.Title), sub.User,
-		sub.Rating, sub.ID)
+
+	q := escapeHTML(search.Search)
+	title := escapeHTML(sub.Title)
+	// image captions have a 200 character limit, so we need to crop the search to fit. figure out how long everything
+	// else is first
+	lenCheck := fmt.Sprintf(searchResultTemplate, "", title, sub.User, sub.Rating, sub.ID)
+	limit := 200 - len(lenCheck)
+	if limit < 0 {
+		logger.WithField("limit", limit).Error("No space for search query in caption")
+		q = ""
+	} else if limit > len(q) {
+		// this could leave dangling HTML entities... oh well
+		q = q[:limit]
+	}
+
+	msg := fmt.Sprintf(searchResultTemplate, q, title, sub.User, sub.Rating, sub.ID)
 	for uid := range search.Users {
 		if b.hasUserSeenID(sub.ID, int(uid)) {
 			continue
