@@ -99,6 +99,10 @@ func (b *bot) send(userID int, m tgbotapi.Chattable) {
 func (b *bot) tryToSendImage(userID int, fb *tgbotapi.FileBytes, msg string) {
 	if fb != nil {
 		m := tgbotapi.NewPhotoUpload(int64(userID), *fb)
+		// media uploads have a 200 character limit
+		if len(msg) > 200 {
+			msg = msg[:200]
+		}
 		m.Caption = msg
 		m.ParseMode = "HTML"
 		b.send(userID, m)
