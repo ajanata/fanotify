@@ -264,7 +264,7 @@ func (b *bot) alertForSearchResult(sub *faapi.Submission, search *db.Search) {
 	if limit < 0 {
 		logger.WithField("limit", limit).Error("No space for search query in caption")
 		q = ""
-	} else if limit > len(q) {
+	} else if len(q) > limit {
 		// this could leave dangling HTML entities... oh well
 		q = q[:limit]
 	}
