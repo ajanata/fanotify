@@ -90,7 +90,17 @@ func (b *bot) send(userID int, m tgbotapi.Chattable) {
 
 	_, err := b.tg.Send(m)
 	if err != nil {
-		logger.WithError(err).Error("Unable to send message")
+		// TODO better way to check this
+		if strings.Contains(err.Error(), "bot was blocked") {
+			// TODO not hacky way of doing this
+			// TODO clean up searches only being run for that user
+			b.cmdStop(&tgbotapi.User{
+				ID:       userID,
+				UserName: "mock-user-for-stop",
+			})
+		} else {
+			logger.WithError(err).Error("Unable to send message")
+		}
 	}
 }
 
