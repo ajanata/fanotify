@@ -94,6 +94,7 @@ func (b *bot) send(userID int, m tgbotapi.Chattable) {
 	if err != nil {
 		// TODO better way to check this
 		if strings.Contains(err.Error(), "bot was blocked") {
+			logger.Info("bot was blocked by user, stopping bot for user")
 			// TODO not hacky way of doing this
 			// TODO clean up searches only being run for that user
 			b.cmdStop(&tgbotapi.User{
