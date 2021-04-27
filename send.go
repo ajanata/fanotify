@@ -37,6 +37,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// blockedUsers indicates whether we were told that the user blocked us.
+// TODO it'd be grand to just stop the bot for those users so we stop trying to send to them, but passing that
+// particular error out to where we have a writable db transaction requires more refactoring than I want to do right
+// now, so perhaps eventually we'll have a CLI to manually update the database once in a while.
+// And *even better* for that would be being able to completely delete them and any searches they were the only user
+// we were doing this for.
+var blockedUsers = map[int]bool{}
+
 // userStartedBot checks that the user has started (and hasn't stopped) the bot.
 func (b *bot) userStartedBot(userID int) bool {
 	logger := log.WithFields(log.Fields{
@@ -78,12 +86,13 @@ func escapeHTML(s string, params ...interface{}) string {
 }
 
 func (b *bot) send(userID int, m tgbotapi.Chattable) {
+	if blockedUsers[userID] {
+		return
+	}
 	logger := log.WithFields(log.Fields{
 		"func":    "send",
 		"userID":  userID,
-		// don't log the message, the "bot was blocked" check isn't working all the time and logging the preview image
-		// is annoying
-		// "message": m,
+		"message": m,
 	})
 
 	if !b.userStartedBot(userID) {
@@ -94,13 +103,8 @@ func (b *bot) send(userID int, m tgbotapi.Chattable) {
 	if err != nil {
 		// TODO better way to check this
 		if strings.Contains(err.Error(), "bot was blocked") {
-			logger.Info("bot was blocked by user, stopping bot for user")
-			// TODO not hacky way of doing this
-			// TODO clean up searches only being run for that user
-			b.cmdStop(&tgbotapi.User{
-				ID:       userID,
-				UserName: "mock-user-for-stop",
-			})
+			blockedUsers[userID] = true
+			logger.Info("bot was blocked by user, not sending them anything else")
 		} else {
 			logger.WithError(err).Error("Unable to send message")
 		}
