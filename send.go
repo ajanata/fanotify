@@ -81,7 +81,9 @@ func (b *bot) send(userID int, m tgbotapi.Chattable) {
 	logger := log.WithFields(log.Fields{
 		"func":    "send",
 		"userID":  userID,
-		"message": m,
+		// don't log the message, the "bot was blocked" check isn't working all the time and logging the preview image
+		// is annoying
+		// "message": m,
 	})
 
 	if !b.userStartedBot(userID) {
